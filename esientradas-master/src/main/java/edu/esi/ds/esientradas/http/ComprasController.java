@@ -2,7 +2,8 @@ package edu.esi.ds.esientradas.http;
 
 import java.util.Map;
 
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,22 +16,17 @@ import jakarta.servlet.http.HttpSession;
 @RequestMapping("/compras")
 public class ComprasController {
 
+    @Autowired
+    private UsuarioService usuarioService;
+
     @PutMapping("/comprar")
     public void comprar(HttpSession session,HttpServletResponse response, @RequestBody String userToken) {
         String sessionId = session.getId();
         if (userToken == null || userToken.isEmpty()) {
-            response.setRedirect("http:www.uclm.es");
+            response.setRedirect(location: "http:www.uclm.es");
             return;
         }
         this.usuarioService.checkToken(userToken);
-        
     }
-    /* 
-    @PostMapping("/comprar")
-    public void comprar(@RequestBody Map<String, Object> payload) {
-        String sessionId = (String) payload.get("sessionId");
-        Long idEntrada = ((Number) payload.get("idEntrada")).longValue();
-
-    }
-*/
+    
 }
