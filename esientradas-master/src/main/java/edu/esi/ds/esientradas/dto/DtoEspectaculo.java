@@ -2,8 +2,8 @@ package edu.esi.ds.esientradas.dto;
 import java.time.LocalDateTime;
 
 public class DtoEspectaculo {
-    public String artista;
-    public LocalDateTime fecha;
+    private String artista;
+    private LocalDateTime fecha;
     private String escenario;
     private Long id;
 

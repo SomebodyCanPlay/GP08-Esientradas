@@ -12,22 +12,20 @@ import jakarta.persistence.JoinColumn;
 @Entity
 public class Token {
     @Id
-    @Column(name = "valor", nullable = false, length = 32)//36
+    @Column(name = "valor", nullable = false, length = 32)
     private String valor;
 
     @Column(name = "hora", nullable = false)
     private Long hora;
 
-    @Column(name = "session_id", nullable = false, length = 64)//el 64 problablemente se quite
+    @Column(name = "session_id", nullable = false, length = 64)
     private String sessionId;
 
-    // ahora Token es el lado propietario de la relación, con la FK en la tabla token
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "entrada_id")          // columna que faltaba en tu script SQL
+    @JoinColumn(name = "entrada_id")
     private Entrada entrada;
 
     public Token() {
-        // generar UUID sin guiones para 32 caracteres
         this.valor = UUID.randomUUID().toString().replace("-", "");
         this.hora = System.currentTimeMillis();
     }
@@ -40,7 +38,6 @@ public class Token {
         this.sessionId = sessionId;
     }
 
-    // Getters and setters
     public String getValor() {
         return valor;
     }
@@ -62,6 +59,9 @@ public class Token {
     }
 
     public void setEntrada(Entrada entrada) {
+        this.entrada = entrada;
+    }
+}
         this.entrada = entrada;
     }
 }

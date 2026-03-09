@@ -27,7 +27,26 @@ public class BusquedaService {
         return this.espectaculoDao.findByArtista(artista);
     }
 
-    public List<Entrada> getEntradas(String espectaculoid) {
-        return this.espectaculoDao.findById(Long.parseLong(espectaculoid)).orElseThrow().getEntradas();
+    public List<Entrada> getEntradas(String espectaculoId) {
+        return this.espectaculoDao.findById(Long.parseLong(espectaculoId)).orElseThrow().getEntradas();
+    }
+
+    public Integer getNumeroEntradasDisponibles(Long espectaculoId) {
+        return this.entradaDao.countByEspectaculoId(espectaculoId);
+    }
+
+    public Integer getEntradasLibres(Long espectaculoId) {
+        return this.entradaDao.countByEspectaculoIdAndEstado(espectaculoId, Estado.DISPONIBLE);
+    }
+
+    public DtoEntradas getNumeroDeEntradasComoDto(Long espectaculoId) {
+        Object o = this.entradaDao.getNumeroEntradasComoDto(espectaculoId);
+        Object[] arr = (Object[]) o;
+        DtoEntradas dto = new DtoEntradas();
+            ((Number) arr[0]).intValue();
+            ((Number) arr[1]).intValue();
+            ((Number) arr[2]).intValue();
+            ((Number) arr[3]).intValue();
+        return dto;
     }
 }
