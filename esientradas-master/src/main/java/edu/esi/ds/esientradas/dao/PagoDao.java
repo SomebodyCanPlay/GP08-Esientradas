@@ -13,6 +13,6 @@ public interface PagoDao extends JpaRepository<Pago, Long> {
     Optional<Pago> findByIdIntentoPago(String idIntentoPago);
 
     List<Pago> findByEstado(String estado);
-}
+
     List<Pago> findByEstado(String estado);
 }

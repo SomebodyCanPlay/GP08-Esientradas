@@ -22,9 +22,9 @@ import org.springframework.http.HttpStatus;
 @Service
 public class PagosService {
     @Autowired
-    private static final String secretKey=""
+    private static final String secretKey="sk_test_51T92np0X24g3D2snorVjpIBkAnJqITaNqwigCQjy7GwZDEz0BYFmF8LIrtIAOkJ1slKrwGNchTn96N2GP8PaqdMh00XVIz1NqW";
 
-    public void prepararPago(Long centimos) throw StripeException {
+    public void prepararPago(Long centimos) throws StripeException {
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
             .setAmount(centimos)
             .setCurrency("eur")
@@ -32,6 +32,7 @@ public class PagosService {
         PaymentIntent intent = PaymentIntent.create(params);
         JSONObject jso = new JSONObject(intent.toJson());
         String clientSecret = jso.getString("client_secret");
-        system.out.println("Client secret: " + clientSecret);
+        System.out.println("Client secret: " + clientSecret);
+        return clientSecret;
     }
 }
