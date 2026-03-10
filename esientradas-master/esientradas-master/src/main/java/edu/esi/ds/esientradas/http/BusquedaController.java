@@ -1,16 +1,16 @@
 package edu.esi.ds.esientradas.http;
 
-import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import edu.esi.ds.esientradas.services.BusquedaService;
 import edu.esi.ds.esientradas.model.Escenario;
-
-import java.util.List;
+import edu.esi.ds.esientradas.services.BusquedaService;
 
 @RestController
 @RequestMapping("/busqueda")
