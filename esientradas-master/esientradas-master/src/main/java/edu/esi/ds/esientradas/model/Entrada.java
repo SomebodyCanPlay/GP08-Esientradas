@@ -13,6 +13,7 @@ import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 
+ //prueba de commit
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
 public abstract class Entrada {
