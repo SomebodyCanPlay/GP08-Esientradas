@@ -18,6 +18,11 @@ import edu.esi.ds.esientradas.model.Espectaculo;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import edu.esi.ds.esientradas.services.ColaService;
+import javax.servlet.http.HttpSession;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
+
 @RestController
 @RequestMapping("/busqueda")
 @CrossOrigin(origins = "*")
@@ -29,8 +34,16 @@ public class BusquedaController {
     @Autowired
     private EntradaDao entradaDao;
 
+    // Inyectar ColaService
+    @Autowired
+    private ColaService colaService;
+
     @GetMapping("/getEntradas")
-    public List<Entrada> getEntradas(@RequestParam Long espectaculoid){
+    public List<Entrada> getEntradas(@RequestParam Long espectaculoid, HttpSession session){
+        // Comprobación de cola: si no puede pasar, devolver FORBIDDEN
+        if (!colaService.canPass(session.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
+        }
         return this.entradaDao.findByEspectaculoId(espectaculoid);
     }
 
@@ -40,7 +53,11 @@ public class BusquedaController {
     }
     
     @GetMapping("/getEspectaculos")
-    public DtoEntradas getNumeroDeEntradasComoDto() {
+    public DtoEntradas getNumeroDeEntradasComoDto(HttpSession session) {
+        // Comprobación de cola: si no puede pasar, devolver FORBIDDEN
+        if (!colaService.canPass(session.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
+        }
         return this.service.getEspectaculos();
     }
 

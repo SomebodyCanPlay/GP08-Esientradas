@@ -1,32 +1,46 @@
-package edu.esi.ds.esientradas.controllers;
+package edu.esi.ds.esientradas.services;
 
-import edu.esi.ds.esientradas.services.UsuarioService;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
-@RestController
-@RequestMapping("/external")
-public class ExternalController {
+@Service
+public class UsuarioService {
 
-    private final UsuarioService usuarioService;
+	private final String esiusuariosBaseUrl;
+	private final RestTemplate restTemplate = new RestTemplate();
 
-    public ExternalController(UsuarioService usuarioService) {
-        this.usuarioService = usuarioService;
-    }
+	public UsuarioService(@Value("${esiusuarios.url}") String esiusuariosBaseUrl) {
+		this.esiusuariosBaseUrl = esiusuariosBaseUrl;
+	}
 
-    @GetMapping("/checkToken")
-    public ResponseEntity<String> checkToken(@RequestParam(required = false) String token) {
-        try {
-            String userName = usuarioService.checkToken(token);
-            if (userName == null || userName.isEmpty()) {
-                throw new ResponseStatusException.status(HttpStatus.UNAUTHORIZED, reason: "Token invalido");
-            }
-        } catch (RestClientException ex) {
-            throw new ResponseStatusException.status(HttpStatus.UNAUTHORIZED, reason: "Token invalido");
-        }
-    }
+	/**
+	 * Envía una petición GET a {esiusuarios.url}/checkToken?token=...
+	 * Devuelve el cuerpo de la respuesta si el status es 200 OK, devuelve null si token nulo/vacío
+	 * Lanza RestClientException si ocurre un error de cliente/servidor (para que el controlador lo capture).
+	 */
+	public String checkToken(String token) {
+		if (token == null || token.isEmpty()) {
+			return null;
+		}
+		try {
+			String url = UriComponentsBuilder.fromHttpUrl(esiusuariosBaseUrl)
+					.pathSegment("checkToken")
+					.queryParam("token", token)
+					.build()
+					.toUriString();
+
+			ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+			if (response.getStatusCode().is2xxSuccessful()) {
+				return response.getBody();
+			}
+			return null;
+		} catch (RestClientException ex) {
+			// Propagar para que el controlador maneje la autorización/errores
+			throw ex;
+		}
+	}
 }
