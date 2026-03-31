@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import edu.esi.ds.esientradas.services.BusquedaService;
 import edu.esi.ds.esientradas.dao.EntradaDao;
 import edu.esi.ds.esientradas.dto.DtoEspectaculo;
+import edu.esi.ds.esientradas.dto.DtoEntradas;
 import edu.esi.ds.esientradas.model.Entrada;
 import edu.esi.ds.esientradas.model.Escenario;
 import edu.esi.ds.esientradas.model.Espectaculo;
