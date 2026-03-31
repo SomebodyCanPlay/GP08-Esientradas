@@ -1,6 +1,7 @@
 package edu.esi.ds.esientradas.dao;
 
 import java.util.Optional;
+import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
@@ -47,5 +48,12 @@ public class TokenDao {
         TypedQuery<Token> q = em.createQuery("SELECT t FROM Token t WHERE t.entrada.id = :eid", Token.class);
         q.setParameter("eid", entradaId);
         return q.getResultStream().findFirst();
+    }
+
+    // Nuevo método: devuelve tokens cuya marca 'hora' es anterior a cutoffMillis
+    public List<Token> findAllOlderThan(long cutoffMillis) {
+        TypedQuery<Token> q = em.createQuery("SELECT t FROM Token t WHERE t.hora < :cutoff", Token.class);
+        q.setParameter("cutoff", cutoffMillis);
+        return q.getResultList();
     }
 }
