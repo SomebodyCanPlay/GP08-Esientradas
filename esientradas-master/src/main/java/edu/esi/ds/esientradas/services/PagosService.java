@@ -12,13 +12,17 @@ import com.stripe.exception.StripeException;
 import edu.esi.ds.esientradas.dao.EntradaDao;
 import edu.esi.ds.esientradas.dao.PagoDao;
 import edu.esi.ds.esientradas.dao.TokenDao;
+import edu.esi.ds.esientradas.dao.ConfiguracionDao;
 import edu.esi.ds.esientradas.model.Entrada;
 import edu.esi.ds.esientradas.model.Pago;
 import edu.esi.ds.esientradas.model.Token;
 import edu.esi.ds.esientradas.model.Estado;
+import edu.esi.ds.esientradas.model.Configuracion;
 
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
+
+import java.util.List;
 
 @Service
 public class PagosService {
@@ -32,14 +36,17 @@ public class PagosService {
 	@Autowired
 	private TokenDao tokenDao;
 
-	// Inyectar el nuevo EmailService
 	@Autowired
-	private EmailService emailService;
+	private ConfiguracionDao configuracionDao;
+
+	@Autowired
+	private PDFService pdfService;
 
 	private static final String secretKey="sk_test_51T92np0X24g3D2snorVjpIBkAnJqITaNqwigCQjy7GwZDEz0BYFmF8LIrtIAOkJ1slKrwGNchTn96N2GP8PaqdMh00XVIz1NqW";
 
-	public String prepararPago(Long centimos) throws StripeException {
+	public String prepararPago(Long euros) throws StripeException {
 		Stripe.apiKey = secretKey;
+		Long centimos = euros * 100;
 
 		PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
 				.setAmount(centimos)
@@ -51,7 +58,7 @@ public class PagosService {
 	}
 
 	@Transactional
-	public void confirmarVenta(Long entradaId, String paymentIntentId) {
+	public void firmarPago(Long entradaId, String paymentIntentId) {
 		// 1. Buscamos la entrada
 		Entrada entrada = entradaDao.findById(entradaId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entrada no encontrada"));
@@ -76,9 +83,15 @@ public class PagosService {
 		pago.setIdIntentoPago(paymentIntentId);
 		pagoDao.save(pago);
 
-		// Llamada al servicio de email (sigue dentro de la transacción)
-		emailService.enviarConfirmacion(entrada);
+		System.out.println("[PagosService] ¡Venta confirmada! Entrada: " + entradaId);
 
-		System.out.println("¡Venta confirmada! Entrada: " + entradaId);
+		// 5. Orquestación: Leer configuración y delegar a PDFService
+		Configuracion config = null;
+		List<Configuracion> configs = configuracionDao.findAll();
+		if (!configs.isEmpty()) {
+			config = configs.get(0); // Tomamos el primer/único registro activo
+		}
+		
+		pdfService.generarYEnviar(entrada, config);
 	}
 }

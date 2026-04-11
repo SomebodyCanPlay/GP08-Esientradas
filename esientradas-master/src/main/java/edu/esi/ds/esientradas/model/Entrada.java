@@ -15,8 +15,17 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
+
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "tipo")
+@JsonSubTypes({
+    @Type(value = Precisa.class, name = "precisa"),
+    @Type(value = DeZona.class, name = "dezona")
+})
 public abstract class Entrada {
     @Id @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
     protected Long id;

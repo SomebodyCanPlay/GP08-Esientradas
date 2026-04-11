@@ -14,5 +14,4 @@ public interface PagoDao extends JpaRepository<Pago, Long> {
 
     List<Pago> findByEstado(String estado);
 
-    List<Pago> findByEstado(String estado);
 }

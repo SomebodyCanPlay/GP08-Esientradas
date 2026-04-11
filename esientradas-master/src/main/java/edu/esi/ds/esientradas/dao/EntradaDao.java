@@ -13,6 +13,8 @@ import edu.esi.ds.esientradas.dto.DtoEntradas;
 
 public interface EntradaDao extends JpaRepository<Entrada, Long> {
     List<Entrada> findByEspectaculoId(Long espectaculoId);
+    Integer countByEspectaculoId(Long espectaculoId);
+    Integer countByEspectaculoIdAndEstado(Long espectaculoId, Estado estado);
 
     @Query(value = "UPDATE Entrada e SET e.estado = :estado WHERE e.id = :idEntrada")
     @Modifying
@@ -24,6 +26,6 @@ public interface EntradaDao extends JpaRepository<Entrada, Long> {
         SUM(estado = 'RESERVADA') AS reservadas,
         SUM(estado = 'VENDIDA') AS vendidas
         FROM Entrada e
-        WHERE e.espectaculo_id = :espectaculoId""")
-    DtoEntradas getNumeroDeEntradasComoDto(@Param("espectaculoId") Long espectaculoId);
+        WHERE e.espectaculo.id = :espectaculoId""")
+    Object getNumeroEntradasComoDto(@Param("espectaculoId") Long espectaculoId);
 }

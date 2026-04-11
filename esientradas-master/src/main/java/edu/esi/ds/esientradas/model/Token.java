@@ -62,6 +62,3 @@ public class Token {
         this.entrada = entrada;
     }
 }
-        this.entrada = entrada;
-    }
-}

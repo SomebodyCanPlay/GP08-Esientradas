@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import edu.esi.ds.esientradas.services.ColaService;
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
@@ -54,17 +54,25 @@ public class BusquedaController {
     }
     
     @GetMapping("/getEspectaculos")
-    public DtoEntradas getNumeroDeEntradasComoDto(HttpSession session) {
+    public List<Espectaculo> getEspectaculos(@RequestParam String artista, HttpSession session) {
         // Comprobación de cola: si no puede pasar, devolver FORBIDDEN
         if (!colaService.canPass(session.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
         }
-        return this.service.getEspectaculos();
+        return this.service.getEspectaculos(artista);
+    }
+
+    @GetMapping("/getResumenEntradas")
+    public DtoEntradas getNumeroDeEntradasComoDto(@RequestParam Long espectaculoId, HttpSession session) {
+        if (!colaService.canPass(session.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
+        }
+        return this.service.getNumeroDeEntradasComoDto(espectaculoId);
     }
 
     @GetMapping("/getNumeroEntradas")
     public Integer getNumeroEntradas(@RequestParam Long espectaculoId) {
-        return this.service.getNumeroEntradas(espectaculoId);
+        return this.service.getNumeroEntradasDisponibles(espectaculoId);
     }
 
     @GetMapping("/saludar/{nombre}")
