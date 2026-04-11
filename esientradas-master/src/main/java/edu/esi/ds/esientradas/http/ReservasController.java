@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import edu.esi.ds.esientradas.services.ReservasService;
 import jakarta.servlet.http.HttpSession;
 
+import java.util.Map;
+import java.util.HashMap;
+
 
 @RestController
 @RequestMapping("/reservas")
@@ -18,17 +21,28 @@ public class ReservasController {
     private ReservasService service;
 
     @PutMapping("/reservar")
-    public Long reservar(HttpSession session, @RequestParam Long idEntrada){
-        Long precioEntrada = this.service.reservar(idEntrada, session.getId());
+    public Map<String, Object> reservar(HttpSession session,
+                                       @RequestParam Long idEntrada,
+                                       @RequestParam(required = false) String token) {
+
+        // service.reservar debe aceptar el token (puede ser null) y devolver
+        // un Map con keys "token" (String) y "precioEntrada" (Long).
+        Map<String, Object> reservaResult = this.service.reservar(idEntrada, session.getId(), token);
+
+        Long precioEntrada = (Long) reservaResult.get("precioEntrada");
+        String tokenResult = (String) reservaResult.get("token");
+
         Long precioTotal = (Long) session.getAttribute("precioTotal");
-        if(precioTotal == null){
+        if (precioTotal == null) {
             precioTotal = precioEntrada;
-            session.setAttribute("precioTotal", precioTotal);
         } else {
             precioTotal += precioEntrada;
-            session.setAttribute("precioTotal", precioTotal);
         }
-        
-        return precioTotal;
+        session.setAttribute("precioTotal", precioTotal);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", tokenResult);
+        response.put("precioTotal", precioTotal);
+        return response;
     }
 }
