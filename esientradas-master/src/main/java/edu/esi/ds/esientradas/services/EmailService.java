@@ -13,4 +13,14 @@ public class EmailService {
 		System.out.println("[EmailService] Simulando envío de correo al cliente con el recibo adjunto...");
 		System.out.println(" - Entrada ID: " + entrada.getId());
 	}
+	
+	// Nueva sobrecarga que incluye el destinatario real
+	public void enviarConfirmacion(Entrada entrada, String recipientEmail) {
+        if (entrada == null) return;
+        System.out.println("Enviando email de confirmación (simulado) al usuario: " + recipientEmail);
+        System.out.println(" - Entrada ID: " + entrada.getId());
+        System.out.println(" - Espectáculo: " + entrada.getEspectaculo());
+        System.out.println(" - Fecha: " + entrada.getFecha());
+        System.out.println(" - Precio: " + entrada.getPrecio());
+    }
 }

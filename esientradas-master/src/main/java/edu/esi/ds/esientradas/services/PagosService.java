@@ -2,7 +2,7 @@ package edu.esi.ds.esientradas.services;
 
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value; // <--- IMPORTANTE: Faltaba esta importación
+import org.springframework.beans.factory.annotation.Value;
 import jakarta.transaction.Transactional;
 
 import com.stripe.model.PaymentIntent;
@@ -24,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PagosService {
@@ -105,5 +106,52 @@ public class PagosService {
         
         // También llamamos al simulador de email para loguear la confirmación
         this.emailService.enviarConfirmacion(entrada);
+    }
+
+    /**
+     * Nuevo método: firma (completa) la venta usando el token de reserva.
+     * Busca el token, obtiene la entrada asociada, marca VENDIDA, borra el token,
+     * registra el pago y envía PDF/email al email proporcionado.
+     */
+    @Transactional
+    public void firmarPago(String tokenValor, String userEmail) {
+        if (tokenValor == null || tokenValor.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token inválido");
+        }
+
+        Optional<Token> optToken = tokenDao.findByValor(tokenValor);
+        Token token = optToken.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Token no encontrado"));
+
+        Entrada entrada = token.getEntrada();
+        if (entrada == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Entrada asociada al token no encontrada");
+        }
+
+        // Marcar entrada como vendida y desvincular token
+        entrada.setEstado(Estado.VENDIDA);
+        entrada.setToken(null);
+        entradaDao.save(entrada);
+
+        // Borrar token de reservas
+        tokenDao.delete(tokenValor);
+
+        // Registrar pago (sin idIntento concreto en este flujo)
+        Pago pago = new Pago();
+        pago.setEntrada(entrada);
+        pago.setEstado("COMPLETADO");
+        pago.setIdIntentoPago(null);
+        pago.setCantidadCentimos(entrada.getPrecio());
+        pagoDao.save(pago);
+
+        // Orquestación adicional: PDF y envio de email al userEmail
+        Configuracion config = configuracionDao.findAll().stream().findFirst().orElse(null);
+        if (pdfService != null) {
+            pdfService.generarYEnviar(entrada, config);
+        }
+
+        // Enviar confirmación al email real obtenido de usuarioService
+        this.emailService.enviarConfirmacion(entrada, userEmail);
+
+        System.out.println("[PagosService] Venta firmada por token: " + tokenValor + " y enviada a: " + userEmail);
     }
 }
