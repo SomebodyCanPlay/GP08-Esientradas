@@ -2,6 +2,7 @@ package edu.esi.ds.esientradas.services;
 
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value; // <--- IMPORTANTE: Faltaba esta importación
 import jakarta.transaction.Transactional;
 
 import com.stripe.model.PaymentIntent;
@@ -27,71 +28,82 @@ import java.util.List;
 @Service
 public class PagosService {
 
-	@Autowired
-	private EntradaDao entradaDao;
+    @Autowired
+    private EmailService emailService;
 
-	@Autowired
-	private PagoDao pagoDao;
+    @Autowired
+    private EntradaDao entradaDao;
 
-	@Autowired
-	private TokenDao tokenDao;
+    @Autowired
+    private PagoDao pagoDao;
 
-	@Autowired
-	private ConfiguracionDao configuracionDao;
+    @Autowired
+    private TokenDao tokenDao;
 
-	@Autowired
-	private PDFService pdfService;
+    @Autowired
+    private ConfiguracionDao configuracionDao;
 
-	private static final String secretKey="sk_test_51T92np0X24g3D2snorVjpIBkAnJqITaNqwigCQjy7GwZDEz0BYFmF8LIrtIAOkJ1slKrwGNchTn96N2GP8PaqdMh00XVIz1NqW";
+    @Autowired
+    private PDFService pdfService;
 
-	public String prepararPago(Long euros) throws StripeException {
-		Stripe.apiKey = secretKey;
-		Long centimos = euros * 100;
+    // Se usa @Value para no dejar la clave a la vista en el código si es posible
+    @Value("${stripe.key:sk_test_51T92np0X24g3D2snorVjpIBkAnJqITaNqwigCQjy7GwZDEz0BYFmF8LIrtIAOkJ1slKrwGNchTn96N2GP8PaqdMh00XVIz1NqW}")
+    private String secretKey;
 
-		PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
-				.setAmount(centimos)
-				.setCurrency("eur")
-				.build();
+    public String prepararPago(Long centimos) throws StripeException {
+        // Stripe trabaja SIEMPRE en céntimos. 
+        // Si el controlador ya te pasa los céntimos, no multipliques por 100.
+        Stripe.apiKey = this.secretKey;
 
-		PaymentIntent intent = PaymentIntent.create(params);
-		return intent.getClientSecret();
-	}
+        PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+                .setAmount(centimos)
+                .setCurrency("eur")
+                .build();
 
-	@Transactional
-	public void firmarPago(Long entradaId, String paymentIntentId) {
-		// 1. Buscamos la entrada
-		Entrada entrada = entradaDao.findById(entradaId)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entrada no encontrada"));
+        PaymentIntent intent = PaymentIntent.create(params);
+        return intent.getClientSecret();
+    }
 
-		// 2. Actualizamos estado de la entrada
-		entrada.setEstado(Estado.VENDIDA);
-		
-		// 3. Gestión del Token (como es OneToOne, lo desvinculamos)
-		Token t = entrada.getToken();
-		if (t != null) {
-			entrada.setToken(null);
-			tokenDao.delete(t.getValor()); // Aquí sí lo borramos porque ya no es una "reserva", es una venta
-		}
-		
-		entradaDao.save(entrada);
+    @Transactional
+    public void firmarPago(Long entradaId, String paymentIntentId) {
+        // 1. Buscamos la entrada
+        Entrada entrada = entradaDao.findById(entradaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entrada no encontrada"));
 
-		// 4. Registrar el éxito en la tabla de Pagos
-		Pago pago = pagoDao.findByIdIntentoPago(paymentIntentId)
-				.orElse(new Pago()); // Por si no se creó al principio
-		pago.setEntrada(entrada);
-		pago.setEstado("COMPLETADO");
-		pago.setIdIntentoPago(paymentIntentId);
-		pagoDao.save(pago);
+        // 2. Actualizamos estado de la entrada a VENDIDA
+        entrada.setEstado(Estado.VENDIDA);
+        
+        // 3. Gestión del Token
+        Token t = entrada.getToken();
+        if (t != null) {
+            entrada.setToken(null); // Desvinculamos
+            tokenDao.delete(t.getValor()); // Borramos el token de reserva
+        }
+        
+        entradaDao.save(entrada);
 
-		System.out.println("[PagosService] ¡Venta confirmada! Entrada: " + entradaId);
+        // 4. Registrar o actualizar el Pago
+        Pago pago = pagoDao.findByIdIntentoPago(paymentIntentId)
+                .orElse(new Pago()); 
+        pago.setEntrada(entrada);
+        pago.setEstado("COMPLETADO");
+        pago.setIdIntentoPago(paymentIntentId);
+        pago.setCantidadCentimos(entrada.getPrecio()); 
+        pagoDao.save(pago);
 
-		// 5. Orquestación: Leer configuración y delegar a PDFService
-		Configuracion config = null;
-		List<Configuracion> configs = configuracionDao.findAll();
-		if (!configs.isEmpty()) {
-			config = configs.get(0); // Tomamos el primer/único registro activo
-		}
-		
-		pdfService.generarYEnviar(entrada, config);
-	}
+        System.out.println("[PagosService] ¡Venta confirmada! Entrada: " + entradaId);
+
+        // 5. Orquestación: Configuración y PDF
+        // Buscamos la configuración para el PDF (nombre de la empresa, logo, etc.)
+        Configuracion config = configuracionDao.findAll().stream().findFirst().orElse(null);
+        
+        // 6. Generar PDF y enviar Email
+        // El PDFService se encarga de crear el archivo y enviarlo
+        if (pdfService != null) {
+            pdfService.generarYEnviar(entrada, config);
+        }
+        
+        // También llamamos al simulador de email para loguear la confirmación
+        this.emailService.enviarConfirmacion(entrada);
+    }
 }
