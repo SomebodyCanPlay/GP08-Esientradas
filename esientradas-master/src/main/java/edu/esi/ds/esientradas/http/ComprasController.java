@@ -1,53 +1,64 @@
 package edu.esi.ds.esientradas.http;
 
-import java.util.Map;
-import edu.esi.ds.esientradas.services.UsuarioService;
-import edu.esi.ds.esientradas.services.PagosService; // ...nuevo...
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import jakarta.servlet.http.HttpServletResponse;
+import edu.esi.ds.esientradas.services.ColaService;
+import edu.esi.ds.esientradas.services.UsuarioService; // Asegúrate de tener este servicio
+import edu.esi.ds.esientradas.services.PagosService;   // Y este para la firma
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpSession;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @RestController
-@RequestMapping("/compras")
+@RequestMapping("/cola")
 public class ComprasController {
 
     @Autowired
+    private ColaService colaService;
+    
+    @Autowired
     private UsuarioService usuarioService;
-
-    // Inyectar PagosService para firmar la venta cuando tengamos el email real
+    
     @Autowired
     private PagosService pagosService;
 
-    @PutMapping("/comprar")
-    public void comprar(HttpSession session,HttpServletResponse response, @RequestBody String userToken) {
-        String sessionId = session.getId();
-        if (userToken == null || userToken.isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_FOUND);
-            response.setHeader("Location", "http://www.uclm.es");
-            return;
-        }
-
-        // Llamada a servicio de usuarios para validar token y obtener email del usuario
-        String userEmail = this.usuarioService.checkToken(userToken);
-
-        // Si obtenemos un email, pasar token+email a PagosService para que firme la venta
-        if (userEmail != null && !userEmail.isEmpty()) {
-            // El nuevo método firmarPago(String tokenValor, String userEmail) procesará
-            // la entrada asociada al token y enviará la confirmación al email.
-            this.pagosService.firmarPago(userToken, userEmail);
-            return;
-        }
-
-        // Si no hay email, mantener comportamiento actual (redirigir)
-        response.setStatus(HttpServletResponse.SC_FOUND);
-        response.setHeader("Location", "http://www.uclm.es");
+    // Endpoint para que el frontend haga el seguimiento de su turno
+    @GetMapping("/check")
+    public ResponseEntity<Map<String, Object>> check(@RequestParam String sessionId) {
+        int posicion = colaService.anotarseEnCola(sessionId);
+        boolean canPass = colaService.canPass(sessionId);
+        
+        return ResponseEntity.ok(Map.of(
+            "canPass", canPass,
+            "posicion", canPass ? 0 : posicion
+        ));
     }
-    
+
+    // Endpoint de confirmación de compra (Punto 5 central)
+    @PostMapping("/confirmar")
+    public ResponseEntity<?> confirmarCompra(HttpSession session, @RequestBody Map<String, String> payload) {
+        String sessionId = session.getId();
+        String userToken = payload.get("token");
+
+        // 1. VALIDACIÓN DE COLA: ¿Es su turno?
+        if (!colaService.canPass(sessionId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                 .body("Error: Debes esperar tu turno en la cola.");
+        }
+
+        // 2. COMUNICACIÓN ENTRE SUBSISTEMAS: Validar token en esiusuarios
+        String email = usuarioService.checkToken(userToken);
+        
+        // Dentro de confirmarCompra en ComprasController
+        if (email != null && !email.isEmpty()) {
+            // Usamos el nombre exacto de tu PagosService.java
+            this.pagosService.confirmarPago(userToken, email); 
+            
+            colaService.finalizarCompra(sessionId);
+            return ResponseEntity.ok(Map.of("status", "success"));
+        }
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token de usuario no válido");
+    }
 }

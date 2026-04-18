@@ -1,4 +1,4 @@
-package edu.esi.ds.esientradas.controllers;
+package edu.esi.ds.esientradas.http;
 
 import edu.esi.ds.esientradas.services.ColaService;
 import org.springframework.http.ResponseEntity;
