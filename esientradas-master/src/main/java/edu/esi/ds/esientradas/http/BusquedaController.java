@@ -26,7 +26,7 @@ import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/busqueda")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 public class BusquedaController {
 
     @Autowired
@@ -40,9 +40,9 @@ public class BusquedaController {
     private ColaService colaService;
 
     @GetMapping("/getEntradas")
-    public List<Entrada> getEntradas(@RequestParam Long espectaculoid, HttpSession session){
+    public List<Entrada> getEntradas(@RequestParam Long espectaculoid, @RequestParam String sessionId){
         // Comprobación de cola: si no puede pasar, devolver FORBIDDEN
-        if (!colaService.canPass(session.getId())) {
+        if (!colaService.canPass(sessionId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
         }
         return this.entradaDao.findByEspectaculoId(espectaculoid);
@@ -54,17 +54,17 @@ public class BusquedaController {
     }
     
     @GetMapping("/getEspectaculos")
-    public List<Espectaculo> getEspectaculos(@RequestParam String artista, HttpSession session) {
+    public List<Espectaculo> getEspectaculos(@RequestParam String artista, @RequestParam String sessionId) {
         // Comprobación de cola: si no puede pasar, devolver FORBIDDEN
-        if (!colaService.canPass(session.getId())) {
+        if (!colaService.canPass(sessionId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
         }
         return this.service.getEspectaculos(artista);
     }
 
     @GetMapping("/getResumenEntradas")
-    public DtoEntradas getNumeroDeEntradasComoDto(@RequestParam Long espectaculoId, HttpSession session) {
-        if (!colaService.canPass(session.getId())) {
+    public DtoEntradas getNumeroDeEntradasComoDto(@RequestParam Long espectaculoId, @RequestParam String sessionId) {
+        if (!colaService.canPass(sessionId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
         }
         return this.service.getNumeroDeEntradasComoDto(espectaculoId);

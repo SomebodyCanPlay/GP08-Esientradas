@@ -47,16 +47,11 @@ public class BusquedaService {
     }
 
     public DtoEntradas getNumeroDeEntradasComoDto(Long espectaculoId) {
-        Object o = this.entradaDao.getNumeroEntradasComoDto(espectaculoId);
-        if (o == null) return new DtoEntradas(0,0,0,0);
-        Object[] arr = (Object[]) o;
+        int total = entradaDao.countByEspectaculoId(espectaculoId);
+        int libres = entradaDao.countByEspectaculoIdAndEstado(espectaculoId, Estado.DISPONIBLE);
+        int reservadas = entradaDao.countByEspectaculoIdAndEstado(espectaculoId, Estado.RESERVADA);
+        int vendidas = entradaDao.countByEspectaculoIdAndEstado(espectaculoId, Estado.VENDIDA);
         
-        Integer total = arr[0] != null ? ((Number) arr[0]).intValue() : 0;
-        Integer libres = arr[1] != null ? ((Number) arr[1]).intValue() : 0;
-        Integer reservadas = arr[2] != null ? ((Number) arr[2]).intValue() : 0;
-        Integer vendidas = arr[3] != null ? ((Number) arr[3]).intValue() : 0;
-        
-        DtoEntradas dto = new DtoEntradas(total, libres, reservadas, vendidas);
-        return dto;
+        return new DtoEntradas(total, libres, reservadas, vendidas);
     }
 }

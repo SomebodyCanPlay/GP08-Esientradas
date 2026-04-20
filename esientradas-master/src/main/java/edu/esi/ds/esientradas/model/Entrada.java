@@ -69,6 +69,7 @@ public abstract class Entrada {
         this.precio = precio;
     }
 
+    @JsonIgnore
     public Token getToken() {
         return token;
     }
