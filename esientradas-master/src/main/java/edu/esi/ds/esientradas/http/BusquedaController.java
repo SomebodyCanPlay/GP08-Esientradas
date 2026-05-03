@@ -62,6 +62,14 @@ public class BusquedaController {
         return this.service.getEspectaculos(artista);
     }
 
+    @GetMapping("/getEspectaculosPorEscenario")
+    public List<Espectaculo> getEspectaculosPorEscenario(@RequestParam Long escenarioId, @RequestParam String sessionId) {
+        if (!colaService.canPass(sessionId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
+        }
+        return this.service.getEspectaculosPorEscenario(escenarioId);
+    }
+
     @GetMapping("/getResumenEntradas")
     public DtoEntradas getNumeroDeEntradasComoDto(@RequestParam Long espectaculoId, @RequestParam String sessionId) {
         if (!colaService.canPass(sessionId)) {

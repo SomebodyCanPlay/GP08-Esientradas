@@ -13,6 +13,7 @@ import edu.esi.ds.esientradas.dto.DtoEntradas;
 
 public interface EntradaDao extends JpaRepository<Entrada, Long> {
     List<Entrada> findByEspectaculoId(Long espectaculoId);
+    List<Entrada> findByEstado(Estado estado);
     Integer countByEspectaculoId(Long espectaculoId);
     Integer countByEspectaculoIdAndEstado(Long espectaculoId, Estado estado);
 

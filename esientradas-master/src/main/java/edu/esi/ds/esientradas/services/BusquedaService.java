@@ -34,6 +34,10 @@ public class BusquedaService {
         return this.espectaculoDao.findByArtista(artista);
     }
 
+    public List<Espectaculo> getEspectaculosPorEscenario(Long escenarioId) {
+        return this.espectaculoDao.findByEscenarioId(escenarioId);
+    }
+
     public List<Entrada> getEntradas(String espectaculoId) {
         return this.espectaculoDao.findById(Long.parseLong(espectaculoId)).orElseThrow().getEntradas();
     }

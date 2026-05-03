@@ -25,6 +25,9 @@ public class ComprasController {
     @Autowired
     private PagosService pagosService;
 
+    @Autowired
+    private edu.esi.ds.esientradas.services.ReservasService reservasService;
+
     // Endpoint para que el frontend haga el seguimiento de su turno y se anote
     @GetMapping("/check")
     public ResponseEntity<Map<String, Object>> check(@RequestParam String sessionId) {
@@ -37,16 +40,35 @@ public class ComprasController {
         ));
     }
 
+    // Endpoint para bloquear la entrada por 10 minutos
+    @PostMapping("/prereservar")
+    public ResponseEntity<?> preReservar(@RequestParam String sessionId, @RequestBody Map<String, Object> payload) {
+        if (!colaService.canPass(sessionId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Debes esperar tu turno.");
+        }
+
+        Long idEntrada = Long.valueOf(payload.get("idEntrada").toString());
+        String tokenValor = (payload.containsKey("token") && payload.get("token") != null) ? payload.get("token").toString() : null;
+
+        try {
+            Map<String, Object> resultado = reservasService.reservar(idEntrada, sessionId, tokenValor);
+            return ResponseEntity.ok(resultado);
+        } catch (org.springframework.web.server.ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(Map.of("error", e.getReason()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Error interno procesando reserva"));
+        }
+    }
+
     // Endpoint de confirmación de compra (Punto 5 central)
     @PostMapping("/confirmar")
-    public ResponseEntity<?> confirmarCompra(HttpSession session, @RequestBody Map<String, String> payload) {
-        String sessionId = session.getId();
+    public ResponseEntity<?> confirmarCompra(@RequestParam String sessionId, @RequestBody Map<String, String> payload) {
         String userToken = payload.get("token");
 
         // 1. VALIDACIÓN DE COLA: ¿Es su turno?
         if (!colaService.canPass(sessionId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("Error: Debes esperar tu turno en la cola.");
+                    .body(Map.of("error", "Error: Debes esperar tu turno en la cola."));
         }
 
         // 2. COMUNICACIÓN ENTRE SUBSISTEMAS: Validar token en esiusuarios
@@ -61,6 +83,6 @@ public class ComprasController {
             return ResponseEntity.ok(Map.of("status", "success"));
         }
 
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token de usuario no válido");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Token de usuario no válido"));
     }
 }
