@@ -60,6 +60,18 @@ public class ComprasController {
         }
     }
 
+    // Endpoint para cancelar una prereserva antes de pagar
+    @PostMapping("/cancelar")
+    public ResponseEntity<?> cancelarReserva(@RequestParam String sessionId, @RequestBody Map<String, Object> payload) {
+        Long idEntrada = Long.valueOf(payload.get("idEntrada").toString());
+        try {
+            reservasService.cancelarReserva(idEntrada, sessionId);
+            return ResponseEntity.ok(Map.of("status", "success"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Error interno cancelando reserva"));
+        }
+    }
+
     // Endpoint de confirmación de compra (Punto 5 central)
     @PostMapping("/confirmar")
     public ResponseEntity<?> confirmarCompra(@RequestParam String sessionId, @RequestBody Map<String, String> payload) {

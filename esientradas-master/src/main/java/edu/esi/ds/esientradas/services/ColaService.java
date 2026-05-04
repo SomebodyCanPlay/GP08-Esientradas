@@ -15,7 +15,7 @@ public class ColaService {
     private final Set<String> autorizados = ConcurrentHashMap.newKeySet();
     private final Map<String, Long> ultimaActividad = new ConcurrentHashMap<>();
     
-    private final int MAX_COMPRADORES_SIMULTANEOS = 5;
+    private final int MAX_COMPRADORES_SIMULTANEOS = 3;
     private int compradoresActivos = 0;
 
     public synchronized int anotarseEnCola(String sessionId) {

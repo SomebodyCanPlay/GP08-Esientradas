@@ -38,7 +38,7 @@ public class LiberadorReservasJob {
                     entrada.setEstado(Estado.DISPONIBLE);
                     entrada.setToken(null);
                     entradaDao.save(entrada);
-                    tokenDao.delete(token);
+                    tokenDao.delete(token.getValor());
                 }
             } else {
                 // Si está reservada pero sin token (corrupción de estado), forzar liberación

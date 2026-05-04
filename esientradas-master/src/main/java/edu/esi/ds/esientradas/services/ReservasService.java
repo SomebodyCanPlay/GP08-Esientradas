@@ -86,4 +86,18 @@ public class ReservasService {
 		return result;
 	}
 
+	@Transactional
+	public void cancelarReserva(Long idEntrada, String sessionId) {
+		Entrada entrada = entradaDao.findById(idEntrada).orElse(null);
+		if (entrada != null && entrada.getEstado() == Estado.RESERVADA) {
+			Token token = entrada.getToken();
+			if (token != null && sessionId.equals(token.getSessionId())) {
+				entrada.setEstado(Estado.DISPONIBLE);
+				entrada.setToken(null);
+				entradaDao.save(entrada);
+				tokenDao.delete(token.getValor());
+			}
+		}
+	}
+
 }
