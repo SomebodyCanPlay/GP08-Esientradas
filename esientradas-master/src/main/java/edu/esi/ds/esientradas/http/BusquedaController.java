@@ -1,29 +1,33 @@
 package edu.esi.ds.esientradas.http;
 
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.CrossOrigin;
-
-import edu.esi.ds.esientradas.services.BusquedaService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import edu.esi.ds.esientradas.dao.EntradaDao;
-import edu.esi.ds.esientradas.dto.DtoEspectaculo;
 import edu.esi.ds.esientradas.dto.DtoEntradas;
 import edu.esi.ds.esientradas.model.Entrada;
 import edu.esi.ds.esientradas.model.Escenario;
 import edu.esi.ds.esientradas.model.Espectaculo;
-
-import java.util.List;
-import java.util.stream.Collectors;
-
+import edu.esi.ds.esientradas.services.BusquedaService;
 import edu.esi.ds.esientradas.services.ColaService;
-import jakarta.servlet.http.HttpSession;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
+import java.util.List;
 
+// ============================================================
+// CONTROLADOR DE BÚSQUEDA
+// ============================================================
+// Este controlador es la "puerta de entrada" para las búsquedas del frontend.
+// El frontend (Angular en puerto 4200) llama a estos endpoints para:
+//   - Ver qué escenarios existen
+//   - Buscar espectáculos por artista
+//   - Ver las entradas de un espectáculo (el plano de asientos)
+//
+// @CrossOrigin → permite peticiones desde http://localhost:4200
+//   (sin esto, el navegador bloquearía las peticiones por CORS)
+//
+// Todos los endpoints que muestran entradas comprueban la COLA:
+//   si el usuario no está autorizado (no es su turno), devuelve 403 Forbidden
+// ============================================================
 @RestController
 @RequestMapping("/busqueda")
 @CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
@@ -35,33 +39,50 @@ public class BusquedaController {
     @Autowired
     private EntradaDao entradaDao;
 
-    // Inyectar ColaService
+    // ColaService para verificar si el usuario puede acceder
     @Autowired
     private ColaService colaService;
 
+    // ──────────────────────────────────────────────────────────
+    // GET /busqueda/getEntradas?espectaculoid=X&sessionId=Y
+    // Devuelve todas las entradas de un espectáculo (el plano de asientos)
+    // Requiere estar autorizado en la cola
+    // ──────────────────────────────────────────────────────────
     @GetMapping("/getEntradas")
-    public List<Entrada> getEntradas(@RequestParam Long espectaculoid, @RequestParam String sessionId){
-        // Comprobación de cola: si no puede pasar, devolver FORBIDDEN
+    public List<Entrada> getEntradas(@RequestParam Long espectaculoid, @RequestParam String sessionId) {
         if (!colaService.canPass(sessionId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
         }
         return this.entradaDao.findByEspectaculoId(espectaculoid);
     }
 
+    // ──────────────────────────────────────────────────────────
+    // GET /busqueda/getEscenarios
+    // Devuelve todos los recintos disponibles (sin necesidad de estar en la cola)
+    // El frontend los muestra en el filtro de búsqueda
+    // ──────────────────────────────────────────────────────────
     @GetMapping("/getEscenarios")
-    public List<Escenario> getEscenarios(){
-        return this.service.getEscenarios(); 
+    public List<Escenario> getEscenarios() {
+        return this.service.getEscenarios();
     }
-    
+
+    // ──────────────────────────────────────────────────────────
+    // GET /busqueda/getEspectaculos?artista=X&sessionId=Y
+    // Busca espectáculos por nombre de artista
+    // Requiere estar autorizado en la cola
+    // ──────────────────────────────────────────────────────────
     @GetMapping("/getEspectaculos")
     public List<Espectaculo> getEspectaculos(@RequestParam String artista, @RequestParam String sessionId) {
-        // Comprobación de cola: si no puede pasar, devolver FORBIDDEN
         if (!colaService.canPass(sessionId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
         }
         return this.service.getEspectaculos(artista);
     }
 
+    // ──────────────────────────────────────────────────────────
+    // GET /busqueda/getEspectaculosPorEscenario?escenarioId=X&sessionId=Y
+    // Filtra los espectáculos por recinto
+    // ──────────────────────────────────────────────────────────
     @GetMapping("/getEspectaculosPorEscenario")
     public List<Espectaculo> getEspectaculosPorEscenario(@RequestParam Long escenarioId, @RequestParam String sessionId) {
         if (!colaService.canPass(sessionId)) {
@@ -70,6 +91,11 @@ public class BusquedaController {
         return this.service.getEspectaculosPorEscenario(escenarioId);
     }
 
+    // ──────────────────────────────────────────────────────────
+    // GET /busqueda/getResumenEntradas?espectaculoId=X&sessionId=Y
+    // Devuelve { total, libres, reservadas, vendidas }
+    // Sirve para mostrar "Quedan X entradas disponibles" en el frontend
+    // ──────────────────────────────────────────────────────────
     @GetMapping("/getResumenEntradas")
     public DtoEntradas getNumeroDeEntradasComoDto(@RequestParam Long espectaculoId, @RequestParam String sessionId) {
         if (!colaService.canPass(sessionId)) {
@@ -78,15 +104,12 @@ public class BusquedaController {
         return this.service.getNumeroDeEntradasComoDto(espectaculoId);
     }
 
+    // ──────────────────────────────────────────────────────────
+    // GET /busqueda/getNumeroEntradas?espectaculoId=X
+    // Devuelve el número total de entradas (sin filtro de cola)
+    // ──────────────────────────────────────────────────────────
     @GetMapping("/getNumeroEntradas")
     public Integer getNumeroEntradas(@RequestParam Long espectaculoId) {
         return this.service.getNumeroEntradasDisponibles(espectaculoId);
     }
-
-    @GetMapping("/saludar/{nombre}")
-    public String saludar(@PathVariable String nombre, @RequestParam String apellido){
-        return "Hola " + nombre + " " + apellido + ", esta es la búsqueda de entradas.";
-    }
-
 }
-

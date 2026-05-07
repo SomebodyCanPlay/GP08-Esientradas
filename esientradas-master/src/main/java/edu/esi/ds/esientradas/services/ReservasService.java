@@ -1,103 +1,144 @@
 package edu.esi.ds.esientradas.services;
 
-import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import jakarta.transaction.Transactional;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
-
 import edu.esi.ds.esientradas.dao.EntradaDao;
 import edu.esi.ds.esientradas.dao.TokenDao;
 import edu.esi.ds.esientradas.model.Entrada;
-import edu.esi.ds.esientradas.model.Token;
 import edu.esi.ds.esientradas.model.Estado;
+import edu.esi.ds.esientradas.model.Token;
 
+// ============================================================
+// SERVICIO DE RESERVAS
+// ============================================================
+// Gestiona el "bloqueo temporal" de entradas.
+//
+// Flujo completo de una reserva:
+//   1. Usuario ve el plano de asientos y hace clic en una butaca
+//   2. ReservasController llama a reservar(idEntrada, sessionId, tokenValor)
+//   3. Este servicio:
+//      a) Crea o recupera el Token del usuario
+//      b) Verifica que la entrada esté DISPONIBLE
+//      c) Cambia el estado a RESERVADA
+//      d) Vincula el Token con la Entrada
+//      e) Devuelve el valor del token y el precio al frontend
+//   4. El frontend guarda el token y lo manda en el pago
+//   5. Si no paga en 10 min → ReservaCleanUpTask libera la entrada
+//   6. Si paga → PagosService borra el token y marca la entrada VENDIDA
+// ============================================================
 @Service
 public class ReservasService {
 
-	@Autowired
-	private EntradaDao entradaDao;
+    @Autowired
+    private EntradaDao entradaDao;
 
-	@Autowired
-	private TokenDao tokenDao;
+    @Autowired
+    private TokenDao tokenDao;
 
-	/**
-	 * Reserva una entrada asociándola a un token (nuevo o existente).
-	 * Retorna un Map con "token" (String) y "precioEntrada" (Long).
-	 */
-	@Transactional
-	public Map<String, Object> reservar(Long idEntrada, String sessionId, String tokenValor) {
-		// Preparar/obtener token
-		Token token;
-		boolean tokenEsNuevo = false;
+    // ============================================================
+    // RESERVAR una entrada
+    // ============================================================
+    // Parámetros:
+    //   - idEntrada  → qué entrada quiere el usuario (el asiento concreto)
+    //   - sessionId  → identifica la sesión del navegador del usuario
+    //   - tokenValor → si ya tiene un token previo (varias entradas en el carrito)
+    //                  puede reutilizarlo; si no, se crea uno nuevo
+    //
+    // Devuelve un Map con:
+    //   - "token"        → el valor del token (para usarlo al pagar)
+    //   - "precioEntrada" → el precio en céntimos (para mostrarlo en el frontend)
+    // ============================================================
+    @Transactional
+    public Map<String, Object> reservar(Long idEntrada, String sessionId, String tokenValor) {
 
-		if (tokenValor == null || tokenValor.isEmpty()) {
-			token = new Token();
-			tokenValor = UUID.randomUUID().toString();
-			token.setValor(tokenValor);
-			token.setSessionId(sessionId);
-			token.setHora(System.currentTimeMillis());
-			tokenEsNuevo = true;
-		} else {
-			Optional<Token> opt = tokenDao.findByValor(tokenValor);
-			if (opt.isPresent()) {
-				token = opt.get();
-				token.setSessionId(sessionId);
-				token.setHora(System.currentTimeMillis());
-			} else {
-				token = new Token();
-				token.setValor(tokenValor);
-				token.setSessionId(sessionId);
-				token.setHora(System.currentTimeMillis());
-				tokenEsNuevo = true;
-			}
-		}
+        Token token;
+        boolean tokenEsNuevo = false;
 
-		// Buscar la entrada
-		Entrada entrada = entradaDao.findById(idEntrada)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entrada no encontrada"));
+        // Si el usuario no tenía token → crear uno nuevo
+        // Si ya tenía un token (de una entrada anterior en el carrito) → reutilizarlo
+        if (tokenValor == null || tokenValor.isEmpty()) {
+            // Crear token nuevo
+            token = new Token();
+            tokenValor = UUID.randomUUID().toString();
+            token.setValor(tokenValor);
+            token.setSessionId(sessionId);
+            token.setHora(System.currentTimeMillis());
+            tokenEsNuevo = true;
+        } else {
+            Optional<Token> opt = tokenDao.findByValor(tokenValor);
+            if (opt.isPresent()) {
+                // El token existe → actualizamos su hora (reiniciamos el temporizador de 10 min)
+                token = opt.get();
+                token.setSessionId(sessionId);
+                token.setHora(System.currentTimeMillis());
+            } else {
+                // El token ya no existe en BD (expiró) → crear uno nuevo
+                token = new Token();
+                token.setValor(tokenValor);
+                token.setSessionId(sessionId);
+                token.setHora(System.currentTimeMillis());
+                tokenEsNuevo = true;
+            }
+        }
 
-		// Comprobar disponibilidad
-		if (entrada.getEstado() != Estado.DISPONIBLE) {
-			throw new ResponseStatusException(HttpStatus.CONFLICT, "Entrada no disponible para reservar");
-		}
+        // Buscamos la entrada en la BD
+        // orElseThrow() → si no existe, lanza un error 404 Not Found automáticamente
+        Entrada entrada = entradaDao.findById(idEntrada)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entrada no encontrada"));
 
-		// Asociar y marcar como reservada
-		entrada.setEstado(Estado.RESERVADA);
-		entrada.setToken(token);
-		token.setEntrada(entrada);
+        // Comprobamos que la entrada esté libre — si ya está reservada o vendida, rechazamos
+        // Error 409 Conflict → hay un conflicto (la entrada ya está cogida)
+        if (entrada.getEstado() != Estado.DISPONIBLE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Entrada no disponible para reservar");
+        }
 
-		// Persistir token y entrada
-		if (tokenEsNuevo) {
-			tokenDao.save(token);
-		} else {
-			tokenDao.update(token);
-		}
-		entradaDao.save(entrada);
+        // Vinculamos la entrada con el token (en ambos sentidos, por la relación @OneToOne)
+        entrada.setEstado(Estado.RESERVADA);
+        entrada.setToken(token);
+        token.setEntrada(entrada);
 
-		// Preparar resultado
-		Map<String, Object> result = new HashMap<>();
-		result.put("token", token.getValor());
-		result.put("precioEntrada", entrada.getPrecio()); // se asume Long
-		return result;
-	}
+        // Guardamos en la BD
+        if (tokenEsNuevo) {
+            tokenDao.save(token);    // INSERT
+        } else {
+            tokenDao.update(token);  // UPDATE
+        }
+        entradaDao.save(entrada);    // UPDATE del estado
 
-	@Transactional
-	public void cancelarReserva(Long idEntrada, String sessionId) {
-		Entrada entrada = entradaDao.findById(idEntrada).orElse(null);
-		if (entrada != null && entrada.getEstado() == Estado.RESERVADA) {
-			Token token = entrada.getToken();
-			if (token != null && sessionId.equals(token.getSessionId())) {
-				entrada.setEstado(Estado.DISPONIBLE);
-				entrada.setToken(null);
-				entradaDao.save(entrada);
-				tokenDao.delete(token.getValor());
-			}
-		}
-	}
+        // Preparamos la respuesta para el frontend
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", token.getValor());
+        result.put("precioEntrada", entrada.getPrecio());
+        return result;
+    }
 
+    // ============================================================
+    // CANCELAR RESERVA — el usuario deshace la selección de una entrada
+    // ============================================================
+    // Solo se puede cancelar si:
+    //   - La entrada está RESERVADA
+    //   - El token pertenece a la misma sesión (no puede cancelar otro usuario)
+    @Transactional
+    public void cancelarReserva(Long idEntrada, String sessionId) {
+        Entrada entrada = entradaDao.findById(idEntrada).orElse(null);
+
+        if (entrada != null && entrada.getEstado() == Estado.RESERVADA) {
+            Token token = entrada.getToken();
+
+            // Verificamos que el token pertenece a esta sesión (seguridad)
+            if (token != null && sessionId.equals(token.getSessionId())) {
+                entrada.setEstado(Estado.DISPONIBLE); // liberar entrada
+                entrada.setToken(null);               // desvincular token
+                entradaDao.save(entrada);
+                tokenDao.delete(token.getValor());    // borrar el token de la BD
+            }
+        }
+    }
 }

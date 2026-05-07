@@ -94,18 +94,15 @@ public class PagosService {
 
         System.out.println("[PagosService] ¡Venta confirmada! Entrada: " + entradaId);
 
-        // 5. Orquestación: Configuración y PDF
-        // Buscamos la configuración para el PDF (nombre de la empresa, logo, etc.)
+        // 5. Buscar la configuración de la empresa para el PDF (nombre, logo, etc.)
         Configuracion config = configuracionDao.findAll().stream().findFirst().orElse(null);
         
-        // 6. Generar PDF y enviar Email
-        // El PDFService se encarga de crear el archivo y enviarlo
+        // 6. Generar PDF y enviar Email de confirmación
+        // pdfService.generarYEnviar() ya llama internamente a emailService.enviarConfirmacion()
+        // así que solo hace falta esta línea — NO llamar a emailService por separado
         if (pdfService != null) {
             pdfService.generarYEnviar(entrada, config);
         }
-        
-        // También llamamos al simulador de email para loguear la confirmación
-        this.emailService.enviarConfirmacion(entrada);
     }
 
     /**
@@ -143,15 +140,75 @@ public class PagosService {
         pago.setCantidadCentimos(entrada.getPrecio());
         pagoDao.save(pago);
 
-        // Orquestación adicional: PDF y envio de email al userEmail
+        // Generar PDF y enviar el email de confirmación al email del usuario
+        // userEmail viene de esiusuarios (es el email real del comprador)
         Configuracion config = configuracionDao.findAll().stream().findFirst().orElse(null);
         if (pdfService != null) {
             pdfService.generarYEnviar(entrada, config);
         }
-
-        // Enviar confirmación al email real obtenido de usuarioService
+        // Notificamos con el email real del usuario (el que devolvió checkToken de esiusuarios)
         this.emailService.enviarConfirmacion(entrada, userEmail);
 
-        System.out.println("[PagosService] Venta firmada por token: " + tokenValor + " y enviada a: " + userEmail);
+        System.out.println("[PagosService] Venta firmada por token: " + tokenValor + " → email enviado a: " + userEmail);
+    }
+
+    // ============================================================
+    // MÉTODO PRINCIPAL DEL FLUJO DE COMPRA
+    // ============================================================
+    // Este es el método que llama ComprasController cuando el usuario pulsa "Confirmar compra"
+    // Recibe el sessionId (identifica al usuario en la cola) y el userEmail (de esiusuarios)
+    // Confirma la venta de TODAS las entradas que el usuario prerreservó en esta sesión
+    @Transactional
+    public void firmarPagosPorSession(String sessionId, String userEmail) {
+
+        // Buscamos todos los tokens de reserva de esta sesión
+        // Cada token representa UNA entrada que el usuario puso en el carrito
+        List<Token> tokens = tokenDao.findAllBySessionId(sessionId);
+        
+        if (tokens.isEmpty()) {
+            // Si no hay tokens, el usuario no tenía nada en el carrito
+            // (o la sesión ya expiró y ReservaCleanUpTask limpió los tokens)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No hay reservas activas para esta sesión");
+        }
+
+        // Cargamos la configuración de la empresa (nombre, logo) para el PDF
+        Configuracion config = configuracionDao.findAll().stream().findFirst().orElse(null);
+
+        // Procesamos cada entrada del carrito una por una
+        for (Token token : tokens) {
+            Entrada entrada = token.getEntrada();
+
+            if (entrada != null) {
+
+                // 1. Cambiar estado de RESERVADA → VENDIDA
+                // y desvincular el token (ya no hace falta, la venta está confirmada)
+                entrada.setEstado(Estado.VENDIDA);
+                entrada.setToken(null);
+                entradaDao.save(entrada);
+
+                // 2. Registrar el pago en la tabla 'pago'
+                // Esto guarda un registro de cuánto pagó y por qué entrada
+                Pago pago = new Pago();
+                pago.setEntrada(entrada);
+                pago.setEstado("COMPLETADO");
+                pago.setCantidadCentimos(entrada.getPrecio());
+                pagoDao.save(pago);
+
+                // 3. Generar PDF del recibo (simulado → guarda URL en BD)
+                if (pdfService != null) {
+                    pdfService.generarYEnviar(entrada, config);
+                }
+
+                // 4. Enviar email de confirmación al comprador
+                // userEmail viene de esiusuarios (lo devolvió checkToken)
+                this.emailService.enviarConfirmacion(entrada, userEmail);
+                
+                System.out.println("[PagosService] ✓ Entrada " + entrada.getId() + " vendida → email a " + userEmail);
+            }
+
+            // 5. Borrar el token de reserva de la BD
+            // Ya no hace falta — la entrada está VENDIDA
+            tokenDao.delete(token.getValor());
+        }
     }
 }
