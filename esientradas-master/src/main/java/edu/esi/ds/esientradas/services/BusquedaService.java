@@ -9,7 +9,6 @@ import edu.esi.ds.esientradas.model.Espectaculo;
 import edu.esi.ds.esientradas.model.Estado;
 import edu.esi.ds.esientradas.dao.*;
 import edu.esi.ds.esientradas.dto.DtoEntradas;
-import java.util.Optional;
 
 // ============================================================
 // SERVICIO DE BÚSQUEDA
@@ -61,11 +60,12 @@ public class BusquedaService {
     public List<Entrada> getEntradas(String espectaculoId) {
         return this.espectaculoDao
                 .findById(Long.parseLong(espectaculoId))
-                .orElseThrow()  // lanza excepción si no existe el espectáculo
+                .orElseThrow() // lanza excepción si no existe el espectáculo
                 .getEntradas();
     }
 
-    // Cuenta el TOTAL de entradas de un espectáculo (vendidas + libres + reservadas)
+    // Cuenta el TOTAL de entradas de un espectáculo (vendidas + libres +
+    // reservadas)
     public Integer getNumeroEntradasDisponibles(Long espectaculoId) {
         return this.entradaDao.countByEspectaculoId(espectaculoId);
     }
@@ -75,15 +75,18 @@ public class BusquedaService {
         return this.entradaDao.countByEspectaculoIdAndEstado(espectaculoId, Estado.DISPONIBLE);
     }
 
-    // Devuelve un resumen con los 4 contadores: total, libres, reservadas y vendidas
-    // Usado por el panel de administración o el frontend para mostrar "quedan X entradas"
+    // Devuelve un resumen con los 4 contadores: total, libres, reservadas y
+    // vendidas
+    // Usado por el panel de administración o el frontend para mostrar "quedan X
+    // entradas"
     public DtoEntradas getNumeroDeEntradasComoDto(Long espectaculoId) {
-        int total     = entradaDao.countByEspectaculoId(espectaculoId);
-        int libres    = entradaDao.countByEspectaculoIdAndEstado(espectaculoId, Estado.DISPONIBLE);
+        int total = entradaDao.countByEspectaculoId(espectaculoId);
+        int libres = entradaDao.countByEspectaculoIdAndEstado(espectaculoId, Estado.DISPONIBLE);
         int reservadas = entradaDao.countByEspectaculoIdAndEstado(espectaculoId, Estado.RESERVADA);
-        int vendidas  = entradaDao.countByEspectaculoIdAndEstado(espectaculoId, Estado.VENDIDA);
+        int vendidas = entradaDao.countByEspectaculoIdAndEstado(espectaculoId, Estado.VENDIDA);
 
-        // DtoEntradas es un objeto simple que agrupa estos 4 números para mandarlo al frontend
+        // DtoEntradas es un objeto simple que agrupa estos 4 números para mandarlo al
+        // frontend
         return new DtoEntradas(total, libres, reservadas, vendidas);
     }
 }

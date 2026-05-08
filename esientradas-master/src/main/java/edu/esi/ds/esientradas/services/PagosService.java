@@ -153,61 +153,91 @@ public class PagosService {
     }
 
     // ============================================================
-    // MÉTODO PRINCIPAL DEL FLUJO DE COMPRA
+    // PASO 1 DEL NUEVO FLUJO: iniciarPago
     // ============================================================
-    // Este es el método que llama ComprasController cuando el usuario pulsa "Confirmar compra"
-    // Recibe el sessionId (identifica al usuario en la cola) y el userEmail (de esiusuarios)
-    // Confirma la venta de TODAS las entradas que el usuario prerreservó en esta sesión
+    // El usuario pulsa "Ir al Pago" → este método crea un registro PENDIENTE
+    // en la tabla pago por cada entrada que tiene en el carrito.
+    // El frontend lo usa para mostrar el formulario de tarjeta.
+    // El pago pasa a COMPLETADO cuando el usuario confirma la tarjeta.
+    // ============================================================
     @Transactional
-    public void firmarPagosPorSession(String sessionId, String userEmail) {
-
-        // Buscamos todos los tokens de reserva de esta sesión
-        // Cada token representa UNA entrada que el usuario puso en el carrito
+    public java.util.Map<String, Object> iniciarPago(String sessionId) {
         List<Token> tokens = tokenDao.findAllBySessionId(sessionId);
-        
+
         if (tokens.isEmpty()) {
-            // Si no hay tokens, el usuario no tenía nada en el carrito
-            // (o la sesión ya expiró y ReservaCleanUpTask limpió los tokens)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No hay reservas activas para esta sesión");
         }
 
-        // Cargamos la configuración de la empresa (nombre, logo) para el PDF
-        Configuracion config = configuracionDao.findAll().stream().findFirst().orElse(null);
+        long totalCentimos = 0;
+        java.util.List<Long> pagoIds = new java.util.ArrayList<>();
 
-        // Procesamos cada entrada del carrito una por una
         for (Token token : tokens) {
             Entrada entrada = token.getEntrada();
+            if (entrada == null) continue;
 
-            if (entrada != null) {
+            // Buscamos si ya existe un pago PENDIENTE para esta entrada
+            // (por si el usuario pulsó "Ir al Pago" dos veces)
+            Optional<Pago> pagoExistente = pagoDao.findByEntradaId(entrada.getId());
+            Pago pago = pagoExistente.orElse(new Pago());
 
-                // 1. Cambiar estado de RESERVADA → VENDIDA
-                // y desvincular el token (ya no hace falta, la venta está confirmada)
-                entrada.setEstado(Estado.VENDIDA);
-                entrada.setToken(null);
-                entradaDao.save(entrada);
+            // Creamos o actualizamos el registro con estado PENDIENTE
+            pago.setEntrada(entrada);
+            pago.setEstado("PENDIENTE");
+            pago.setCantidadCentimos(entrada.getPrecio());
+            pagoDao.save(pago);
 
-                // 2. Registrar el pago en la tabla 'pago'
-                // Esto guarda un registro de cuánto pagó y por qué entrada
-                Pago pago = new Pago();
-                pago.setEntrada(entrada);
-                pago.setEstado("COMPLETADO");
-                pago.setCantidadCentimos(entrada.getPrecio());
-                pagoDao.save(pago);
+            pagoIds.add(pago.getId());
+            totalCentimos += entrada.getPrecio();
 
-                // 3. Generar PDF del recibo (simulado → guarda URL en BD)
-                if (pdfService != null) {
-                    pdfService.generarYEnviar(entrada, config);
-                }
+            System.out.println("[PagosService] Pago PENDIENTE creado → entrada " + entrada.getId()
+                    + " (" + (entrada.getPrecio() / 100.0) + " €)");
+        }
 
-                // 4. Enviar email de confirmación al comprador
-                // userEmail viene de esiusuarios (lo devolvió checkToken)
-                this.emailService.enviarConfirmacion(entrada, userEmail);
-                
-                System.out.println("[PagosService] ✓ Entrada " + entrada.getId() + " vendida → email a " + userEmail);
+        // Devolvemos los IDs de pago y el total (en céntimos → el frontend divide entre 100)
+        return java.util.Map.of("pagoIds", pagoIds, "totalCentimos", totalCentimos);
+    }
+
+    // ============================================================
+    // PASO 2 DEL NUEVO FLUJO: confirmarPagosPorSession (PENDIENTE → COMPLETADO)
+    // ============================================================
+    // El usuario ha introducido los datos de la tarjeta y confirmado el pago.
+    // Este método actualiza los pagos PENDIENTE a COMPLETADO y marca las entradas VENDIDAS.
+    @Transactional
+    public void firmarPagosPorSession(String sessionId, String userEmail) {
+        List<Token> tokens = tokenDao.findAllBySessionId(sessionId);
+
+        if (tokens.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No hay reservas activas para esta sesión");
+        }
+
+        Configuracion config = configuracionDao.findAll().stream().findFirst().orElse(null);
+
+        for (Token token : tokens) {
+            Entrada entrada = token.getEntrada();
+            if (entrada == null) continue;
+
+            // 1. Marcar entrada como VENDIDA
+            entrada.setEstado(Estado.VENDIDA);
+            entrada.setToken(null);
+            entradaDao.save(entrada);
+
+            // 2. Actualizar el pago PENDIENTE a COMPLETADO
+            // Si por algún motivo no hay pago PENDIENTE previo, creamos uno nuevo
+            Pago pago = pagoDao.findByEntradaId(entrada.getId())
+                    .orElse(new Pago(entrada, entrada.getPrecio(), "EUR"));
+            pago.setEstado("COMPLETADO");
+            pagoDao.save(pago);
+
+            // 3. Generar PDF y enviar email de confirmación
+            if (pdfService != null) {
+                pdfService.generarYEnviar(entrada, config);
             }
+            this.emailService.enviarConfirmacion(entrada, userEmail);
 
-            // 5. Borrar el token de reserva de la BD
-            // Ya no hace falta — la entrada está VENDIDA
+            System.out.println("[PagosService] ✓ Pago COMPLETADO → entrada " + entrada.getId()
+                    + " → email a " + userEmail);
+
+            // 4. Borrar el token de reserva (ya no hace falta)
             tokenDao.delete(token.getValor());
         }
     }

@@ -20,6 +20,8 @@ import java.util.Map;
 // ============================================================
 @RestController
 @RequestMapping("/reservas")
+@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
+
 public class ReservasController {
 
     @Autowired
@@ -32,14 +34,14 @@ public class ReservasController {
     // Va acumulando el precio total en la sesión de Spring (session.getAttribute).
     //
     // Devuelve: { "token": "xxxxx", "precioTotal": 5000 }
-    //   precioTotal → suma del precio de todas las entradas reservadas hasta ahora
-    //   token → para identificar esta reserva en el pago
+    // precioTotal → suma del precio de todas las entradas reservadas hasta ahora
+    // token → para identificar esta reserva en el pago
     // ──────────────────────────────────────────────────────────
     @PutMapping("/reservar")
     public Map<String, Object> reservar(
-            HttpSession session,                          // sesión HTTP de Spring (automática)
-            @RequestParam Long idEntrada,                 // qué entrada quiere reservar
-            @RequestParam(required = false) String token  // token previo del carrito (opcional)
+            HttpSession session, // sesión HTTP de Spring (automática)
+            @RequestParam Long idEntrada, // qué entrada quiere reservar
+            @RequestParam(required = false) String token // token previo del carrito (opcional)
     ) {
         // Delegamos al servicio la lógica de reserva
         Map<String, Object> reservaResult = this.service.reservar(idEntrada, session.getId(), token);

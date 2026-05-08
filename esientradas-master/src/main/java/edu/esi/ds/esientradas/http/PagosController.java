@@ -19,13 +19,14 @@ import edu.esi.ds.esientradas.services.PagosService;
 // ============================================================
 @RestController
 @RequestMapping("/pagos")
+@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 public class PagosController {
 
     @Autowired
     private PagosService pagosService;
 
     // POST /pagos/prepararPago
-    // Body: { "centimos": 2500 }  ← 2500 = 25,00 €
+    // Body: { "centimos": 2500 } ← 2500 = 25,00 €
     // Devuelve: el clientSecret de Stripe (texto)
     @PostMapping("/prepararPago")
     public String prepararPago(@RequestBody Map<String, Object> infoPago) {

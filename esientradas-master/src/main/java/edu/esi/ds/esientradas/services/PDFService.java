@@ -23,20 +23,17 @@ public class PDFService {
     @Autowired
     private PdfDao pdfDao;
 
-    // EmailService para "enviar" el PDF al usuario tras generarlo
-    @Autowired
-    private EmailService emailService;
-
     // Genera (simula) el PDF del recibo y lo registra en BD
     // Parámetros:
-    //   - entrada → la entrada comprada (para saber ID y precio)
-    //   - config  → datos de la empresa (nombre, URL) para el recibo
+    // - entrada → la entrada comprada (para saber ID y precio)
+    // - config → datos de la empresa (nombre, URL) para el recibo
     public void generarYEnviar(Entrada entrada, Configuracion config) {
 
         // Si config es null (no hay configuración en BD), usamos valores por defecto
         String empName = (config != null && config.getNombre() != null) ? config.getNombre() : "Empresa Desconocida";
-        String empUrl  = (config != null && config.getUrl() != null)    ? config.getUrl()    : "Sin URL";
-        String empVend = (config != null && config.getVendedores() != null) ? config.getVendedores() : "Vendedor Predeterminado";
+        String empUrl = (config != null && config.getUrl() != null) ? config.getUrl() : "Sin URL";
+        String empVend = (config != null && config.getVendedores() != null) ? config.getVendedores()
+                : "Vendedor Predeterminado";
 
         System.out.println("[PDFService] Generando recibo PDF para entrada ID: " + entrada.getId());
         System.out.println("[PDFService] Empresa: " + empName + " | URL: " + empUrl + " | Vendedores: " + empVend);
@@ -49,7 +46,5 @@ public class PDFService {
 
         System.out.println("[PDFService] PDF registrado en BD. Delegando envío a EmailService.");
 
-        // Delegar el envío del email (también simulado)
-        emailService.enviarConfirmacion(entrada);
     }
 }

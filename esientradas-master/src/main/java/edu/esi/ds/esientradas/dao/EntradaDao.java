@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import edu.esi.ds.esientradas.model.Entrada;
 import edu.esi.ds.esientradas.model.Estado;
-import edu.esi.ds.esientradas.dto.DtoEntradas;
 
 // ============================================================
 // DAO (Data Access Object) de Entrada
@@ -42,7 +41,8 @@ public interface EntradaDao extends JpaRepository<Entrada, Long> {
     Integer countByEspectaculoId(Long espectaculoId);
 
     // Cuenta entradas de un espectáculo filtrando también por estado
-    // Ejemplo: countByEspectaculoIdAndEstado(1L, DISPONIBLE) → cuántas libres quedan
+    // Ejemplo: countByEspectaculoIdAndEstado(1L, DISPONIBLE) → cuántas libres
+    // quedan
     Integer countByEspectaculoIdAndEstado(Long espectaculoId, Estado estado);
 
     // @Query → aquí SÍ escribimos el SQL/JPQL nosotros porque Spring no puede
@@ -53,15 +53,16 @@ public interface EntradaDao extends JpaRepository<Entrada, Long> {
     @Modifying
     void updateEstado(@Param("idEntrada") Long idEntrada, @Param("estado") Estado estado);
 
-    // Devuelve estadísticas agregadas de entradas de un espectáculo en un solo objeto
+    // Devuelve estadísticas agregadas de entradas de un espectáculo en un solo
+    // objeto
     // SQL: COUNT total, SUM de disponibles, reservadas y vendidas
     // Usado en el panel de administración para mostrar el resumen de venta
     @Query("""
-        SELECT COUNT(*) AS total,
-        SUM(estado = 'DISPONIBLE') AS libres,
-        SUM(estado = 'RESERVADA') AS reservadas,
-        SUM(estado = 'VENDIDA') AS vendidas
-        FROM Entrada e
-        WHERE e.espectaculo.id = :espectaculoId""")
+            SELECT COUNT(*) AS total,
+            SUM(estado = 'DISPONIBLE') AS libres,
+            SUM(estado = 'RESERVADA') AS reservadas,
+            SUM(estado = 'VENDIDA') AS vendidas
+            FROM Entrada e
+            WHERE e.espectaculo.id = :espectaculoId""")
     Object getNumeroEntradasComoDto(@Param("espectaculoId") Long espectaculoId);
 }

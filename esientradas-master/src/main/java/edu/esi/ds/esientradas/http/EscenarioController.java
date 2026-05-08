@@ -18,13 +18,15 @@ import edu.esi.ds.esientradas.services.EscenarioService;
 // ============================================================
 @RestController
 @RequestMapping("/escenarios")
+@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 public class EscenarioController {
 
     @Autowired
     private EscenarioService service;
 
     // POST /escenarios/insertar
-    // Body: { "nombre": "Wizink Center", "descripcion": "Pabellón cubierto en Madrid" }
+    // Body: { "nombre": "Wizink Center", "descripcion": "Pabellón cubierto en
+    // Madrid" }
     //
     // Valida que los campos obligatorios no estén vacíos y llama al servicio.
     // Si todo está bien: devuelve 200 OK (vacío)

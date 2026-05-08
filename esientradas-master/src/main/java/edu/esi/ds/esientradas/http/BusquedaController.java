@@ -73,9 +73,8 @@ public class BusquedaController {
     // ──────────────────────────────────────────────────────────
     @GetMapping("/getEspectaculos")
     public List<Espectaculo> getEspectaculos(@RequestParam String artista, @RequestParam String sessionId) {
-        if (!colaService.canPass(sessionId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
-        }
+        // Hemos quitado la comprobación de la cola aquí para que la búsqueda sea
+        // pública
         return this.service.getEspectaculos(artista);
     }
 
@@ -84,10 +83,9 @@ public class BusquedaController {
     // Filtra los espectáculos por recinto
     // ──────────────────────────────────────────────────────────
     @GetMapping("/getEspectaculosPorEscenario")
-    public List<Espectaculo> getEspectaculosPorEscenario(@RequestParam Long escenarioId, @RequestParam String sessionId) {
-        if (!colaService.canPass(sessionId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
-        }
+    public List<Espectaculo> getEspectaculosPorEscenario(@RequestParam Long escenarioId,
+            @RequestParam String sessionId) {
+        // Hemos quitado la comprobación de la cola aquí para que el listado sea público
         return this.service.getEspectaculosPorEscenario(escenarioId);
     }
 
@@ -98,9 +96,8 @@ public class BusquedaController {
     // ──────────────────────────────────────────────────────────
     @GetMapping("/getResumenEntradas")
     public DtoEntradas getNumeroDeEntradasComoDto(@RequestParam Long espectaculoId, @RequestParam String sessionId) {
-        if (!colaService.canPass(sessionId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Debe esperar en la cola");
-        }
+        // Quitamos la cola para que se pueda ver cuántas entradas quedan desde la
+        // cartelera
         return this.service.getNumeroDeEntradasComoDto(espectaculoId);
     }
 

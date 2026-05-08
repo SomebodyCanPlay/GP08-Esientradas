@@ -70,10 +70,24 @@ public class UsuarioService {
             }
             return null;
 
+        } catch (org.springframework.web.client.HttpClientErrorException ex) {
+            // Si esiusuarios devuelve 400/401/403, el token no es válido o caducó
+            System.err.println("Token no válido o expirado: " + ex.getMessage());
+            return null;
         } catch (RestClientException ex) {
-            // Si esiusuarios está caído o devuelve error, propagamos la excepción
-            // para que ComprasController la maneje y devuelva un 503 al frontend
-            throw ex;
+            // Si esiusuarios está caído o devuelve 500, informamos en log
+            System.err.println("Error de comunicación con esiusuarios: " + ex.getMessage());
+            
+            // Si es un HttpServerErrorException, podemos sacar el cuerpo del error
+            String detalles = "El servicio de usuarios no está disponible";
+            if (ex instanceof org.springframework.web.client.HttpServerErrorException) {
+                detalles = ((org.springframework.web.client.HttpServerErrorException) ex).getResponseBodyAsString();
+            }
+            
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, 
+                detalles
+            );
         }
     }
 }

@@ -119,12 +119,6 @@ public class ReservasService {
         return result;
     }
 
-    // ============================================================
-    // CANCELAR RESERVA — el usuario deshace la selección de una entrada
-    // ============================================================
-    // Solo se puede cancelar si:
-    //   - La entrada está RESERVADA
-    //   - El token pertenece a la misma sesión (no puede cancelar otro usuario)
     @Transactional
     public void cancelarReserva(Long idEntrada, String sessionId) {
         Entrada entrada = entradaDao.findById(idEntrada).orElse(null);
@@ -140,5 +134,13 @@ public class ReservasService {
                 tokenDao.delete(token.getValor());    // borrar el token de la BD
             }
         }
+    }
+
+    // Devuelve los IDs de las entradas que esta sesión tiene reservadas
+    public java.util.List<Long> getIdsReservados(String sessionId) {
+        return tokenDao.findAllBySessionId(sessionId)
+                .stream()
+                .map(t -> t.getEntrada().getId())
+                .toList();
     }
 }
