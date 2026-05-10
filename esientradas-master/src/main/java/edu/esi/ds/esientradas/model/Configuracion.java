@@ -1,0 +1,34 @@
+package edu.esi.ds.esientradas.model;
+
+import jakarta.persistence.*;
+
+// Entidad Configuracion: datos de la empresa para el recibo PDF.
+@Entity
+@Table(name = "configuracion")
+public class Configuracion {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String nombre;
+    private String url;
+    private String vendedores;
+
+    // Constructor vacío requerido por JPA
+    public Configuracion() {}
+
+    // ── GETTERS Y SETTERS ──
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
+
+    public String getUrl() { return url; }
+    public void setUrl(String url) { this.url = url; }
+
+    public String getVendedores() { return vendedores; }
+    public void setVendedores(String vendedores) { this.vendedores = vendedores; }
+}

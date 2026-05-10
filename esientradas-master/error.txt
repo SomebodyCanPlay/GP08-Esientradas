@@ -1,0 +1,59 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< edu.esi.ds:esientradas >-----------------------
+[INFO] Building esientradas 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ esientradas ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ esientradas ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 36 source files with javac [debug parameters release 17] to target\classes
+[INFO] /C:/Users/eduga/OneDrive/Documentos/GitHub/GP08-Dise-o-Software/esientradas-master/src/main/java/edu/esi/ds/esientradas/services/UsuarioService.java: C:\Users\eduga\OneDrive\Documentos\GitHub\GP08-Dise-o-Software\esientradas-master\src\main\java\edu\esi\ds\esientradas\services\UsuarioService.java uses or overrides a deprecated API.
+[INFO] /C:/Users/eduga/OneDrive/Documentos/GitHub/GP08-Dise-o-Software/esientradas-master/src/main/java/edu/esi/ds/esientradas/services/UsuarioService.java: Recompile with -Xlint:deprecation for details.
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /C:/Users/eduga/OneDrive/Documentos/GitHub/GP08-Dise-o-Software/esientradas-master/src/main/java/edu/esi/ds/esientradas/http/BusquedaController.java:[75,28] cannot find symbol
+  symbol:   method getNumeroEntradas(java.lang.Long)
+  location: variable service of type edu.esi.ds.esientradas.services.BusquedaService
+[ERROR] /C:/Users/eduga/OneDrive/Documentos/GitHub/GP08-Dise-o-Software/esientradas-master/src/main/java/edu/esi/ds/esientradas/services/BusquedaService.java:[42,31] cannot find symbol
+  symbol:   method countByEspectaculoId(java.lang.Long)
+  location: variable entradaDao of type edu.esi.ds.esientradas.dao.EntradaDao
+[ERROR] /C:/Users/eduga/OneDrive/Documentos/GitHub/GP08-Dise-o-Software/esientradas-master/src/main/java/edu/esi/ds/esientradas/services/BusquedaService.java:[46,31] cannot find symbol
+  symbol:   method countByEspectaculoIdAndEstado(java.lang.Long,edu.esi.ds.esientradas.model.Estado)
+  location: variable entradaDao of type edu.esi.ds.esientradas.dao.EntradaDao
+[ERROR] /C:/Users/eduga/OneDrive/Documentos/GitHub/GP08-Dise-o-Software/esientradas-master/src/main/java/edu/esi/ds/esientradas/services/BusquedaService.java:[50,35] cannot find symbol
+  symbol:   method getNumeroEntradasComoDto(java.lang.Long)
+  location: variable entradaDao of type edu.esi.ds.esientradas.dao.EntradaDao
+[INFO] 4 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2.305 s
+[INFO] Finished at: 2026-04-07T11:33:37+02:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.0:compile (default-compile) on project esientradas: Compilation failure: Compilation failure: 
+[ERROR] /C:/Users/eduga/OneDrive/Documentos/GitHub/GP08-Dise-o-Software/esientradas-master/src/main/java/edu/esi/ds/esientradas/http/BusquedaController.java:[75,28] cannot find symbol
+[ERROR]   symbol:   method getNumeroEntradas(java.lang.Long)
+[ERROR]   location: variable service of type edu.esi.ds.esientradas.services.BusquedaService
+[ERROR] /C:/Users/eduga/OneDrive/Documentos/GitHub/GP08-Dise-o-Software/esientradas-master/src/main/java/edu/esi/ds/esientradas/services/BusquedaService.java:[42,31] cannot find symbol
+[ERROR]   symbol:   method countByEspectaculoId(java.lang.Long)
+[ERROR]   location: variable entradaDao of type edu.esi.ds.esientradas.dao.EntradaDao
+[ERROR] /C:/Users/eduga/OneDrive/Documentos/GitHub/GP08-Dise-o-Software/esientradas-master/src/main/java/edu/esi/ds/esientradas/services/BusquedaService.java:[46,31] cannot find symbol
+[ERROR]   symbol:   method countByEspectaculoIdAndEstado(java.lang.Long,edu.esi.ds.esientradas.model.Estado)
+[ERROR]   location: variable entradaDao of type edu.esi.ds.esientradas.dao.EntradaDao
+[ERROR] /C:/Users/eduga/OneDrive/Documentos/GitHub/GP08-Dise-o-Software/esientradas-master/src/main/java/edu/esi/ds/esientradas/services/BusquedaService.java:[50,35] cannot find symbol
+[ERROR]   symbol:   method getNumeroEntradasComoDto(java.lang.Long)
+[ERROR]   location: variable entradaDao of type edu.esi.ds.esientradas.dao.EntradaDao
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
