@@ -1,5 +1,12 @@
 package edu.esi.ds.esientradas.services;
 
+import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestClientException;
+
 // Servicio de usuario: consulta el microservicio esiusuarios para verificar tokens.
 @Service
 public class UsuarioService {
