@@ -13,12 +13,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 // esientradas NO gestiona usuarios propios. Para saber si un usuario
 // está autenticado, pregunta a esiusuarios usando HTTP.
 //
-// Cuando el usuario quiere comprar, el frontend manda su token de sesión.
-// Este servicio envía ese token a esiusuarios y recibe el email del usuario
-// (si el token es válido) o null (si no lo es).
-//
-// Es como un guardia de seguridad que llama por teléfono a la central
-// para confirmar si el carnet de identidad que le muestran es auténtico.
 //
 // La URL de esiusuarios se configura en application.properties:
 //   esiusuarios.url=http://localhost:8081

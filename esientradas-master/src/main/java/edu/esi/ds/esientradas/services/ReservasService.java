@@ -30,7 +30,7 @@ import edu.esi.ds.esientradas.model.Token;
 //      d) Vincula el Token con la Entrada
 //      e) Devuelve el valor del token y el precio al frontend
 //   4. El frontend guarda el token y lo manda en el pago
-//   5. Si no paga en 10 min → ReservaCleanUpTask libera la entrada
+//   5. Si no paga en 2 min → ReservaCleanUpTask libera la entrada
 //   6. Si paga → PagosService borra el token y marca la entrada VENDIDA
 // ============================================================
 @Service
@@ -45,12 +45,6 @@ public class ReservasService {
     // ============================================================
     // RESERVAR una entrada
     // ============================================================
-    // Parámetros:
-    //   - idEntrada  → qué entrada quiere el usuario (el asiento concreto)
-    //   - sessionId  → identifica la sesión del navegador del usuario
-    //   - tokenValor → si ya tiene un token previo (varias entradas en el carrito)
-    //                  puede reutilizarlo; si no, se crea uno nuevo
-    //
     // Devuelve un Map con:
     //   - "token"        → el valor del token (para usarlo al pagar)
     //   - "precioEntrada" → el precio en céntimos (para mostrarlo en el frontend)
@@ -74,7 +68,7 @@ public class ReservasService {
         } else {
             Optional<Token> opt = tokenDao.findByValor(tokenValor);
             if (opt.isPresent()) {
-                // El token existe → actualizamos su hora (reiniciamos el temporizador de 10 min)
+                // El token existe → actualizamos su hora (reiniciamos el temporizador)
                 token = opt.get();
                 token.setSessionId(sessionId);
                 token.setHora(System.currentTimeMillis());
@@ -89,17 +83,15 @@ public class ReservasService {
         }
 
         // Buscamos la entrada en la BD
-        // orElseThrow() → si no existe, lanza un error 404 Not Found automáticamente
         Entrada entrada = entradaDao.findById(idEntrada)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entrada no encontrada"));
 
         // Comprobamos que la entrada esté libre — si ya está reservada o vendida, rechazamos
-        // Error 409 Conflict → hay un conflicto (la entrada ya está cogida)
         if (entrada.getEstado() != Estado.DISPONIBLE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Entrada no disponible para reservar");
         }
 
-        // Vinculamos la entrada con el token (en ambos sentidos, por la relación @OneToOne)
+
         entrada.setEstado(Estado.RESERVADA);
         entrada.setToken(token);
         token.setEntrada(entrada);
@@ -118,6 +110,7 @@ public class ReservasService {
         result.put("precioEntrada", entrada.getPrecio());
         return result;
     }
+
 
     @Transactional
     public void cancelarReserva(Long idEntrada, String sessionId) {

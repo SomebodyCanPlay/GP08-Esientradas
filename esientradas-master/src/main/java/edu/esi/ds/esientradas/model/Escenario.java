@@ -12,11 +12,13 @@ import jakarta.persistence.OneToMany;
 
 @Entity
 public class Escenario {
+    // Atributos de la clase Escenario
     @Id @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
     private Long id;
     private String nombre;
     private String descripcion;
     
+    // Relación con Espectaculo: Un escenario tiene muchos espectáculos
     @OneToMany(mappedBy = "escenario")
     private List<Espectaculo> espectaculos = new ArrayList<>();
 
@@ -43,7 +45,8 @@ public class Escenario {
     public void setDescripcion(String descripcion) {
         this.descripcion = descripcion;
     }
-
+    
+    // Método para obtener los espectáculos
     @JsonIgnore
     public List<Espectaculo> getEspectaculos() {
         return espectaculos;

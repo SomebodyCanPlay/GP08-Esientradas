@@ -19,13 +19,8 @@ public class Configuracion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Nombre de la empresa (ej: "ESIentradas S.L.")
     private String nombre;
-
-    // URL de la web (ej: "https://www.esientradas.com") — aparece en el recibo
     private String url;
-
-    // Lista de vendedores autorizados (puede ser un texto o JSON con nombres)
     private String vendedores;
 
     // Constructor vacío requerido por JPA

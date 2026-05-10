@@ -6,11 +6,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-// ============================================================
-// ESPECTACULO — un concierto o evento concreto en un escenario
-// ============================================================
-// Ejemplo: "Natos y Waor en el Wizink Center, 14 de marzo de 2026"
-//
+
 // Relaciones:
 //   Escenario ──1:N──► Espectaculo ──1:N──► Entrada
 //   (un escenario tiene muchos espectáculos)
@@ -24,21 +20,15 @@ public class Espectaculo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Nombre del artista o grupo (ej: "Aitana", "Coldplay", "Natos y Waor")
     private String artista;
-
-    // Fecha y hora exacta del evento (usamos LocalDateTime que incluye día Y hora)
-    // Ejemplo: 2026-03-14T21:00  →  14 de marzo de 2026 a las 21:00h
     private LocalDateTime fecha;
 
-    // El escenario donde ocurre este espectáculo
     // @ManyToOne → muchos espectáculos pueden ser en el mismo escenario
     // FetchType.LAZY → no carga el escenario de la BD hasta que lo necesites
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "escenario_id", nullable = false)
     private Escenario escenario;
 
-    // Lista de todas las entradas de este espectáculo
     // CascadeType.ALL → si borramos el espectáculo, sus entradas también se borran
     // orphanRemoval → si quitamos una entrada de la lista, se borra de la BD
     @OneToMany(mappedBy = "espectaculo", cascade = CascadeType.ALL, orphanRemoval = true)

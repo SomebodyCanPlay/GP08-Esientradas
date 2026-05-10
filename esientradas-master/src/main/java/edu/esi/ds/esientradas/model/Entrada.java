@@ -6,13 +6,10 @@ import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.persistence.*;
 
-// ============================================================
-// CLASE BASE ABSTRACTA — Entrada
-// ============================================================
-// Esta es la clase "padre" de todos los tipos de entrada.
+
 // Es ABSTRACTA → no se puede crear un objeto Entrada directamente.
 // Solo existen dos tipos concretos: Precisa y DeZona.
-//
+
 // ¿Por qué usar herencia?
 // En un concierto de campo (como Aitana en el Bernabéu) las entradas son
 // por ZONA (zona A, zona B...) → clase DeZona
@@ -41,34 +38,22 @@ import jakarta.persistence.*;
 })
 public abstract class Entrada {
 
-    // ID único de la entrada (lo genera MySQL automáticamente con AUTO_INCREMENT)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     protected Long id;
-
-    // Precio en CÉNTIMOS de euro (no en euros enteros)
-    // Ejemplo: 2500 = 25,00 € — así lo usa Stripe también
     private Long precio;
 
     // Relación con el espectáculo al que pertenece esta entrada
-    // @ManyToOne → muchas entradas pertenecen a un espectáculo
-    // @JoinColumn → en la tabla "entrada" habrá una columna "espectaculo_id"
     // FetchType.LAZY → Hibernate NO carga el espectáculo hasta que lo pedimos explícitamente
-    //   (optimización: evita cargar datos innecesarios de la BD)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "espectaculo_id", nullable = false)
     protected Espectaculo espectaculo;
 
-    // Estado actual de la entrada: DISPONIBLE, RESERVADA o VENDIDA
     // @Enumerated(STRING) → guarda el texto "DISPONIBLE" en BD, no un número
-    //   Así si ves la BD directamente puedes entender el valor sin consultar el código
     @Enumerated(EnumType.STRING)
     protected Estado estado;
 
     // Token de prerreserva: vincula esta entrada con la sesión del usuario que la está comprando
-    // @OneToOne → una entrada tiene como máximo UN token de reserva
-    // mappedBy = "entrada" → el FK (entrada_id) vive en la tabla TOKEN, no aquí
-    // CascadeType.ALL → si borramos la entrada, el token se borra también automáticamente
     @OneToOne(mappedBy = "entrada", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     protected Token token;
 
