@@ -1,74 +1,108 @@
 package edu.esi.ds.esientradas.services;
 
-import jakarta.mail.internet.MimeMessage;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
-import edu.esi.ds.esientradas.model.DeZona;
 import edu.esi.ds.esientradas.model.Entrada;
-import edu.esi.ds.esientradas.model.Espectaculo;
-import edu.esi.ds.esientradas.model.Precisa;
 
-// Servicio de email: envía confirmaciones de compra.
+// Servicio de email: envía confirmaciones de compra con PDF adjunto.
 @Service
 public class EmailService {
 
-    @Autowired
-    private JavaMailSender mailSender;
+    private final RestTemplate restTemplate = new RestTemplate();
 
-    // Método para enviar confirmaciones al usuario.
-    public void enviarConfirmacion(Entrada entrada, String recipientEmail) {
-        if (entrada == null || recipientEmail == null)
+    @Value("${brevo.api.url}")
+    private String brevoApiUrl;
+
+    @Value("${brevo.api.key}")
+    private String brevoApiKey;
+
+    @Value("${app.mail.from}")
+    private String emailFrom;
+
+    @Value("${app.mail.from.name}")
+    private String emailFromName;
+
+    @Async
+    public void enviarConfirmacionConPdf(Entrada entrada, String recipientEmail, byte[] pdfBytes) {
+        if (entrada == null || recipientEmail == null || pdfBytes == null) return;
+        // Delegamos a la nueva función que gestiona listas para no duplicar código
+        enviarConfirmacionCompraMultiple(List.of(entrada), recipientEmail, List.of(pdfBytes));
+    }
+
+    /**
+     * Envía un único correo de confirmación con una o varias entradas en PDF como adjuntos.
+     * @param entradas Lista de entradas compradas.
+     * @param recipientEmail Email del destinatario.
+     * @param pdfs Lista de PDFs (en bytes) correspondientes a cada entrada.
+     */
+    @Async
+    public void enviarConfirmacionCompraMultiple(List<Entrada> entradas, String recipientEmail, List<byte[]> pdfs) {
+        if (entradas == null || entradas.isEmpty() || recipientEmail == null || pdfs == null || pdfs.isEmpty()) {
             return;
-
+        }
+        
         try {
-            // MimeMessage permite configurar un nombre de remitente personalizado (alias)
-            MimeMessage mensaje = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mensaje, "utf-8");
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("api-key", brevoApiKey);
 
-            // Configuramos el remitente con el correo y el nombre visible
-            helper.setFrom("edugallego23@gmail.com", "ESIentradas");
-            helper.setTo(recipientEmail);
-            helper.setSubject("ESIentradas - Confirmación de compra");
+            Entrada primeraEntrada = entradas.get(0);
+            String tituloEspectaculo = primeraEntrada.getEspectaculo() != null ? primeraEntrada.getEspectaculo().getArtista() : "tu evento";
+            
+            boolean esMultiple = entradas.size() > 1;
+            String subject = "🎟️ Tu" + (esMultiple ? "s" : "") + " entrada" + (esMultiple ? "s" : "") + " para: " + tituloEspectaculo;
 
-            StringBuilder texto = new StringBuilder();
-            texto.append("¡Hola!\n\n");
-            texto.append("Has confirmado tu compra. Aquí tienes los detalles:\n");
-            texto.append("--------------------------------------------------\n");
-            texto.append("Ticket ID: ").append(entrada.getId()).append("\n");
-
-            Espectaculo espectaculo = entrada.getEspectaculo();
-            if (espectaculo != null) {
-                texto.append("Artista/Evento: ").append(espectaculo.getArtista()).append("\n");
+            String intro;
+            if (esMultiple) {
+                intro = "<p>Tu compra de " + entradas.size() + " entradas se ha completado con éxito. Adjunto a este correo encontrarás tus entradas oficiales en formato PDF.</p>";
+            } else {
+                intro = "<p>Tu compra se ha completado con éxito. Adjunto a este correo encontrarás tu entrada oficial en formato PDF.</p>";
             }
 
-            // Lógica inteligente para saber qué tipo de entrada es
-            if (entrada instanceof Precisa precisa) {
-                texto.append("Tipo: Butaca Asignada\n");
-                texto.append("Planta: ").append(precisa.getPlanta()).append("\n");
-                texto.append("Fila: ").append(precisa.getFila()).append(" | Columna: ").append(precisa.getColumna())
-                        .append("\n");
+            String htmlBody = "<h2>¡Gracias por tu compra!</h2>" +
+                    "<p>Hola,</p>" +
+                    intro +
+                    "<p>Por favor, lleva las entradas impresas o descargadas en tu móvil para poder acceder al recinto el día del evento.</p>" +
+                    "<br><p>¡Que disfrutes del espectáculo!<br><b>El equipo de ESIentradas</b></p>";
 
-            } else if (entrada instanceof DeZona deZona) {
-                texto.append("Tipo: Entrada General\n");
-                texto.append("Zona: ").append(deZona.getZona()).append("\n");
+            List<Map<String, String>> attachments = new ArrayList<>();
+            for (int i = 0; i < pdfs.size(); i++) {
+                Entrada entrada = entradas.get(i);
+                byte[] pdfBytes = pdfs.get(i);
+                String nombreArchivo = "Entrada_" + entrada.getId() + ".pdf";
+                String pdfBase64 = Base64.getEncoder().encodeToString(pdfBytes);
+                attachments.add(Map.of("name", nombreArchivo, "content", pdfBase64));
             }
 
-            double precioEuros = entrada.getPrecio() / 100.0;
-            texto.append("Precio Total: ").append(precioEuros).append(" €\n");
-            texto.append("--------------------------------------------------\n\n");
-            texto.append("¡Que disfrutes del evento!");
+            Map<String, Object> sender = Map.of("name", emailFromName, "email", emailFrom);
+            List<Map<String, String>> to = List.of(Map.of("email", recipientEmail));
+            Map<String, Object> body = new HashMap<>();
+            body.put("sender", sender);
+            body.put("to", to);
+            body.put("subject", subject);
+            body.put("htmlContent", htmlBody);
+            body.put("attachment", attachments);
 
-            helper.setText(texto.toString());
-            mailSender.send(mensaje);
-
-            System.out.println("[EmailService] Email real y personalizado enviado a: " + recipientEmail);
-
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            restTemplate.postForEntity(brevoApiUrl, request, String.class);
+            
+            String logMessage = "[EmailService] Email con " + entradas.size() + " PDF" + (esMultiple ? "s" : "") + " adjunto" + (esMultiple ? "s" : "") + " enviado a: " + recipientEmail + " via Brevo API.";
+            System.out.println(logMessage);
         } catch (Exception e) {
-            // Log de error en caso de que falle la construcción o el envío del mensaje
-            System.err.println("[EmailService] Error enviando el correo de confirmación: " + e.getMessage());
+            System.err.println("[EmailService] Error enviando el correo con PDF via Brevo API: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

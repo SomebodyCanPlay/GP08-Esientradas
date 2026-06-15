@@ -1,14 +1,18 @@
 package edu.esi.ds.esientradas.services;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.util.List;
+
+import edu.esi.ds.esientradas.dao.EntradaDao;
+import edu.esi.ds.esientradas.dao.EscenarioDao;
+import edu.esi.ds.esientradas.dao.EspectaculoDao;
+import edu.esi.ds.esientradas.dto.DtoEntradas;
 import edu.esi.ds.esientradas.model.Entrada;
 import edu.esi.ds.esientradas.model.Escenario;
 import edu.esi.ds.esientradas.model.Espectaculo;
 import edu.esi.ds.esientradas.model.Estado;
-import edu.esi.ds.esientradas.dao.*;
-import edu.esi.ds.esientradas.dto.DtoEntradas;
 
 // ============================================================
 // Servicio de búsquedas: operaciones para obtener escenarios, espectáculos y entradas.
