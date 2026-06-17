@@ -59,6 +59,52 @@ public class PagosService {
     }
 
     @Transactional
+    public java.util.Map<String, Object> iniciarPago(String sessionId, String emailComprador) throws StripeException {
+        List<Token> tokens = tokenDao.findAllBySessionId(sessionId);
+        if (tokens.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No hay reservas activas para esta sesión");
+        }
+
+        long totalCentimos = 0;
+        
+        // 1. Creamos un único "carrito" de pago
+        Pago carrito = new Pago();
+        carrito.setEstado("PENDIENTE");
+        carrito.setUsuarioEmail(emailComprador); 
+
+        // 2. Metemos todas las entradas en el carrito y sumamos el precio
+        for (Token token : tokens) {
+            Entrada entrada = token.getEntrada();
+            if (entrada == null) continue;
+
+            totalCentimos += entrada.getPrecio();
+            
+            carrito.getEntradas().add(entrada);
+            entrada.setPago(carrito); 
+        }
+
+        carrito.setCantidadCentimos(totalCentimos);
+
+        // 3. Hablamos con Stripe
+        Stripe.apiKey = this.secretKey;
+        PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+                .setAmount(totalCentimos)
+                .setCurrency("eur")
+                .build();
+        PaymentIntent intent = PaymentIntent.create(params);
+
+        // 4. Guardamos el ID real de Stripe en nuestro carrito
+        carrito.setIdIntentoPago(intent.getId());
+        pagoDao.save(carrito); 
+
+        return java.util.Map.of(
+            "pagoId", carrito.getId(),
+            "totalCentimos", totalCentimos,
+            "clientSecret", intent.getClientSecret() 
+        );
+    }
+
+    @Transactional
     public void firmarPago(Long entradaId, String paymentIntentId, String userEmail) {
         Entrada entrada = entradaDao.findById(entradaId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entrada no encontrada"));
@@ -71,10 +117,9 @@ public class PagosService {
             tokenDao.delete(t.getValor());
         }
         
-        entradaDao.save(entrada);
-
         Pago pago = pagoDao.findByIdIntentoPago(paymentIntentId).orElse(new Pago()); 
-        pago.setEntrada(entrada);
+        pago.getEntradas().add(entrada);
+        entrada.setPago(pago);
         pago.setEstado("COMPLETADO");
         pago.setIdIntentoPago(paymentIntentId);
         pago.setCantidadCentimos(entrada.getPrecio()); 
@@ -82,14 +127,11 @@ public class PagosService {
 
         Configuracion config = configuracionDao.findAll().stream().findFirst().orElse(null);
         try {
-            // Generar PDF y enviar correo
             byte[] pdfBytes = pdfService.generarPdf(entrada, config);
             emailService.enviarConfirmacionConPdf(entrada, userEmail, pdfBytes);
         } catch (Exception e) {
             System.err.println("Error generando/enviando PDF: " + e.getMessage());
         }
-
-        System.out.println("[PagosService] ¡Venta confirmada! Entrada: " + entradaId + " -> email enviado a: " + userEmail);
     }
 
     @Transactional
@@ -106,54 +148,23 @@ public class PagosService {
 
         entrada.setEstado(Estado.VENDIDA);
         entrada.setToken(null);
-        entradaDao.save(entrada);
 
         tokenDao.delete(tokenValor);
 
         Pago pago = new Pago();
-        pago.setEntrada(entrada);
+        pago.getEntradas().add(entrada);
+        entrada.setPago(pago);
         pago.setEstado("COMPLETADO");
-        pago.setIdIntentoPago(null);
         pago.setCantidadCentimos(entrada.getPrecio());
         pagoDao.save(pago);
 
         Configuracion config = configuracionDao.findAll().stream().findFirst().orElse(null);
         try {
-            // Generar PDF y enviar correo
             byte[] pdfBytes = pdfService.generarPdf(entrada, config);
             emailService.enviarConfirmacionConPdf(entrada, userEmail, pdfBytes);
         } catch (Exception e) {
             System.err.println("Error generando/enviando PDF: " + e.getMessage());
         }
-
-        System.out.println("[PagosService] Venta firmada por token: " + tokenValor + " → email enviado a: " + userEmail);
-    }
-
-    @Transactional
-    public java.util.Map<String, Object> iniciarPago(String sessionId) {
-        List<Token> tokens = tokenDao.findAllBySessionId(sessionId);
-        if (tokens.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No hay reservas activas para esta sesión");
-        }
-
-        long totalCentimos = 0;
-        java.util.List<Long> pagoIds = new java.util.ArrayList<>();
-
-        for (Token token : tokens) {
-            Entrada entrada = token.getEntrada();
-            if (entrada == null) continue;
-
-            Pago pago = pagoDao.findByEntradaId(entrada.getId()).orElse(new Pago());
-            pago.setEntrada(entrada);
-            pago.setEstado("PENDIENTE");
-            pago.setCantidadCentimos(entrada.getPrecio());
-            pagoDao.save(pago);
-
-            pagoIds.add(pago.getId());
-            totalCentimos += entrada.getPrecio();
-        }
-
-        return java.util.Map.of("pagoIds", pagoIds, "totalCentimos", totalCentimos);
     }
 
     @Transactional
@@ -164,38 +175,43 @@ public class PagosService {
         }
 
         Configuracion config = configuracionDao.findAll().stream().findFirst().orElse(null);
-
         List<Entrada> entradasCompradas = new java.util.ArrayList<>();
         List<byte[]> pdfs = new java.util.ArrayList<>();
+
+        // 1. Recuperamos el carrito (Pago) PENDIENTE que creamos en iniciarPago
+        // Como todas las entradas de esta sesión están en el mismo pago, cogemos el de la primera
+        Entrada primeraEntrada = tokens.get(0).getEntrada();
+        Pago pagoExistente = primeraEntrada.getPago();
+
+        if (pagoExistente != null) {
+            // 2. ¡Actualizamos el existente en lugar de crear uno nuevo!
+            pagoExistente.setEstado("COMPLETADO");
+            pagoDao.save(pagoExistente);
+        }
 
         for (Token token : tokens) {
             Entrada entrada = token.getEntrada();
             if (entrada == null) continue;
 
+            // Marcamos la entrada como vendida y le quitamos el token de reserva
             entrada.setEstado(Estado.VENDIDA);
             entrada.setToken(null);
-            entradaDao.save(entrada);
-
-            Pago pago = pagoDao.findByEntradaId(entrada.getId()).orElse(new Pago(entrada, entrada.getPrecio(), "EUR"));
-            pago.setEstado("COMPLETADO");
-            pagoDao.save(pago);
-
+            
             try {
-                // Generar PDF y guardarlo en la lista, en lugar de enviarlo directamente
+                // Generamos el PDF
                 byte[] pdfBytes = pdfService.generarPdf(entrada, config);
                 entradasCompradas.add(entrada);
                 pdfs.add(pdfBytes);
             } catch (Exception e) {
-                // Loguear el error y continuar con las demás entradas
                 System.err.println("Error generando PDF para la entrada " + entrada.getId() + ": " + e.getMessage());
             }
 
+            // Borramos el token porque ya se ha comprado
             tokenDao.delete(token.getValor());
         }
 
-        // Enviar un único correo con todas las entradas y PDFs al final del bucle
+        // Enviamos el correo final
         if (!entradasCompradas.isEmpty()) {
-            // Este método se encarga de enviar uno o varios PDFs en un solo correo
             emailService.enviarConfirmacionCompraMultiple(entradasCompradas, userEmail, pdfs);
         }
     }

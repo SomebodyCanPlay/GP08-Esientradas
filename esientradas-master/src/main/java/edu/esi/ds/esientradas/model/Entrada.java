@@ -4,31 +4,21 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import jakarta.persistence.*;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 
-// Es ABSTRACTA → no se puede crear un objeto Entrada directamente.
-// Solo existen dos tipos concretos: Precisa y DeZona.
-
-// ¿Por qué usar herencia?
-// En un concierto de campo (como Aitana en el Bernabéu) las entradas son
-// por ZONA (zona A, zona B...) → clase DeZona
-// En un teatro (como el Auditorio Nacional) hay butacas concretas
-// con fila y columna → clase Precisa
-// Ambas comparten precio, estado y espectáculo → esos campos van aquí en Entrada.
-//
-// @Inheritance(strategy = JOINED):
-// En la base de datos habrá 3 tablas:
-//   - entrada  → campos comunes (id, precio, estado, espectaculo_id)
-//   - precisa  → fila, columna, planta (comparte id con entrada)
-//   - de_zona  → zona (comparte id con entrada)
-// Hibernate hace el JOIN automáticamente.
-//
-// @JsonTypeInfo y @JsonSubTypes:
-// Cuando el servidor devuelve una entrada al frontend en JSON,
-// añade automáticamente un campo "tipo": "precisa" o "tipo": "dezona"
-// para que el frontend sepa de qué tipo es.
-// ============================================================
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "tipo")
@@ -43,19 +33,20 @@ public abstract class Entrada {
     protected Long id;
     private Long precio;
 
-    // Relación con el espectáculo al que pertenece esta entrada
-    // FetchType.LAZY → Hibernate NO carga el espectáculo hasta que lo pedimos explícitamente
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "espectaculo_id", nullable = false)
     protected Espectaculo espectaculo;
 
-    // @Enumerated(STRING) → guarda el texto "DISPONIBLE" en BD, no un número
     @Enumerated(EnumType.STRING)
     protected Estado estado;
 
-    // Token de prerreserva: vincula esta entrada con la sesión del usuario que la está comprando
     @OneToOne(mappedBy = "entrada", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     protected Token token;
+
+    // --- NUEVO: Relación con el pago al que pertenece esta entrada ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pago_id")
+    protected Pago pago;
 
     // ============================================================
     // GETTERS Y SETTERS
@@ -64,8 +55,6 @@ public abstract class Entrada {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    // @JsonIgnore → cuando el servidor convierte esta entrada a JSON para el frontend,
-    // NO incluye el espectáculo dentro (evita JSON infinito: entrada→espectaculo→entradas→...)
     @JsonIgnore
     public Espectaculo getEspectaculo() { return espectaculo; }
     public void setEspectaculo(Espectaculo espectaculo) { this.espectaculo = espectaculo; }
@@ -76,8 +65,12 @@ public abstract class Entrada {
     public Long getPrecio() { return precio; }
     public void setPrecio(Long precio) { this.precio = precio; }
 
-    // @JsonIgnore también en el token — no queremos exponer el token al frontend por seguridad
     @JsonIgnore
     public Token getToken() { return token; }
     public void setToken(Token token) { this.token = token; }
+
+    // Getter y Setter del pago
+    @JsonIgnore
+    public Pago getPago() { return pago; }
+    public void setPago(Pago pago) { this.pago = pago; }
 }

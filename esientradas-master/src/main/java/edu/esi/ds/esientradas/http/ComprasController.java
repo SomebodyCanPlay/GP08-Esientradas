@@ -1,14 +1,22 @@
 package edu.esi.ds.esientradas.http;
 
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import edu.esi.ds.esientradas.services.ColaService;
 import edu.esi.ds.esientradas.services.PagosService;
 import edu.esi.ds.esientradas.services.ReservasService;
 import edu.esi.ds.esientradas.services.UsuarioService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import java.util.Map;
 
 // Controlador de compras: gestiona cola, prerreserva y pagos.
 @RestController
@@ -92,10 +100,14 @@ public class ComprasController {
         }
 
         try {
-            java.util.Map<String, Object> resultado = pagosService.iniciarPago(sessionId);
+            // AQUÍ ESTÁ EL ARREGLO: Añadimos el email a la llamada de iniciarPago
+            java.util.Map<String, Object> resultado = pagosService.iniciarPago(sessionId, email);
             return ResponseEntity.ok(resultado);
         } catch (org.springframework.web.server.ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode()).body(Map.of("error", e.getReason()));
+        } catch (Exception e) { // Es buena práctica atrapar excepciones de Stripe aquí
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al iniciar el pago con Stripe"));
         }
     }
 

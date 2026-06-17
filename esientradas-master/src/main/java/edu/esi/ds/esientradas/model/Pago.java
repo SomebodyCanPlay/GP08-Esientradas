@@ -1,9 +1,19 @@
 package edu.esi.ds.esientradas.model;
 
-import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
-// Entidad Pago: registro histórico de pagos (cantidad en céntimos).
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+// Entidad Pago: representa una transacción de compra completa (el carrito).
 @Entity
 @Table(name = "pago")
 public class Pago {
@@ -12,9 +22,9 @@ public class Pago {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "entrada_id")
-    private Entrada entrada;
+    // Un pago agrupa a una o más entradas
+    @OneToMany(mappedBy = "pago", cascade = CascadeType.ALL)
+    private List<Entrada> entradas = new ArrayList<>();
 
     @Column(name = "cantidad_centimos", nullable = false)
     private Long cantidadCentimos;
@@ -28,6 +38,10 @@ public class Pago {
     @Column(name = "id_intento_pago", length = 128)
     private String idIntentoPago;
 
+    // Añadimos el email del comprador directamente al pago
+    @Column(name = "usuario_email")
+    private String usuarioEmail;
+
     @Column(name = "creado_en", nullable = false)
     private Long creadoEn;
 
@@ -37,9 +51,8 @@ public class Pago {
         this.estado = "PENDIENTE";
     }
 
-    public Pago(Entrada entrada, Long cantidadCentimos, String moneda) {
+    public Pago(Long cantidadCentimos, String moneda) {
         this();
-        this.entrada = entrada;
         this.cantidadCentimos = cantidadCentimos;
         if (moneda != null) this.moneda = moneda;
     }
@@ -47,9 +60,10 @@ public class Pago {
     // ── GETTERS Y SETTERS ──
 
     public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public Entrada getEntrada() { return entrada; }
-    public void setEntrada(Entrada entrada) { this.entrada = entrada; }
+    public List<Entrada> getEntradas() { return entradas; }
+    public void setEntradas(List<Entrada> entradas) { this.entradas = entradas; }
 
     public Long getCantidadCentimos() { return cantidadCentimos; }
     public void setCantidadCentimos(Long cantidadCentimos) { this.cantidadCentimos = cantidadCentimos; }
@@ -62,6 +76,9 @@ public class Pago {
 
     public String getIdIntentoPago() { return idIntentoPago; }
     public void setIdIntentoPago(String idIntentoPago) { this.idIntentoPago = idIntentoPago; }
+
+    public String getUsuarioEmail() { return usuarioEmail; }
+    public void setUsuarioEmail(String usuarioEmail) { this.usuarioEmail = usuarioEmail; }
 
     public Long getCreadoEn() { return creadoEn; }
     public void setCreadoEn(Long creadoEn) { this.creadoEn = creadoEn; }
