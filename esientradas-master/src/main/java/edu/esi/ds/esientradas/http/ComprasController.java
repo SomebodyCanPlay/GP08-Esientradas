@@ -100,7 +100,6 @@ public class ComprasController {
         }
 
         try {
-            // AQUÍ ESTÁ EL ARREGLO: Añadimos el email a la llamada de iniciarPago
             java.util.Map<String, Object> resultado = pagosService.iniciarPago(sessionId, email);
             return ResponseEntity.ok(resultado);
         } catch (org.springframework.web.server.ResponseStatusException e) {

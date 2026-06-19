@@ -1,13 +1,14 @@
 package edu.esi.ds.esientradas.services;
 
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
 
 // Servicio de cola: gestiona la fila de acceso por espectáculo.
 @Service
@@ -27,6 +28,10 @@ public class ColaService {
 
     private ColaEspectaculo getCola(Long espectaculoId) {
         return colasPorEspectaculo.computeIfAbsent(espectaculoId, k -> new ColaEspectaculo());
+    }
+
+    public String crearNuevaSesion() {
+        return UUID.randomUUID().toString();
     }
 
     public synchronized int anotarseEnCola(Long espectaculoId, String sessionId) {

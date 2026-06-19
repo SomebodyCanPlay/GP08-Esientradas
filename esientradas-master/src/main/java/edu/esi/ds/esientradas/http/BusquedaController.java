@@ -1,9 +1,16 @@
 package edu.esi.ds.esientradas.http;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+
 import edu.esi.ds.esientradas.dao.EntradaDao;
 import edu.esi.ds.esientradas.dto.DtoEntradas;
 import edu.esi.ds.esientradas.model.Entrada;
@@ -11,7 +18,6 @@ import edu.esi.ds.esientradas.model.Escenario;
 import edu.esi.ds.esientradas.model.Espectaculo;
 import edu.esi.ds.esientradas.services.BusquedaService;
 import edu.esi.ds.esientradas.services.ColaService;
-import java.util.List;
 
 // Controlador de búsqueda: expone endpoints para buscar escenarios, espectáculos y entradas.
 @RestController
@@ -45,20 +51,19 @@ public class BusquedaController {
 
     // Busca espectáculos por artista (público).
     @GetMapping("/getEspectaculos")
-    public List<Espectaculo> getEspectaculos(@RequestParam String artista, @RequestParam String sessionId) {
+    public List<Espectaculo> getEspectaculos(@RequestParam String artista) {
         return this.service.getEspectaculos(artista);
     }
 
     // Filtra espectáculos por escenario (público).
     @GetMapping("/getEspectaculosPorEscenario")
-    public List<Espectaculo> getEspectaculosPorEscenario(@RequestParam Long escenarioId,
-            @RequestParam String sessionId) {
+    public List<Espectaculo> getEspectaculosPorEscenario(@RequestParam Long escenarioId) {
         return this.service.getEspectaculosPorEscenario(escenarioId);
     }
 
     // Devuelve resumen de entradas { total, libres, reservadas, vendidas }.
     @GetMapping("/getResumenEntradas")
-    public DtoEntradas getNumeroDeEntradasComoDto(@RequestParam Long espectaculoId, @RequestParam String sessionId) {
+    public DtoEntradas getNumeroDeEntradasComoDto(@RequestParam Long espectaculoId) {
         return this.service.getNumeroDeEntradasComoDto(espectaculoId);
     }
 
