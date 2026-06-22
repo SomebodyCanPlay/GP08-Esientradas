@@ -77,7 +77,7 @@ public class UsuarioService {
     // Envía una petición POST para sumarle dinero al monedero de un usuario tras una cancelación.
     public boolean sumarSaldo(String email, double cantidad) {
         try {
-            String url = esiusuariosBaseUrl + "/users/sumarSaldo";
+            String url = esiusuariosBaseUrl + "/sumarSaldo";
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -99,7 +99,7 @@ public class UsuarioService {
     // Envía una petición POST para descontar dinero del monedero cuando el usuario compra con su saldo.
     public boolean restarSaldo(String email, double cantidad) {
         try {
-            String url = esiusuariosBaseUrl + "/users/restarSaldo";
+            String url = esiusuariosBaseUrl + "/restarSaldo";
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
