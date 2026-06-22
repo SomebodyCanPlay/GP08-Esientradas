@@ -149,6 +149,7 @@ public class PagosService {
         entrada.setEstado(Estado.VENDIDA);
         entrada.setToken(null);
 
+        entrada.setTokenCancelacion(java.util.UUID.randomUUID().toString());
         tokenDao.delete(tokenValor);
 
         Pago pago = new Pago();
