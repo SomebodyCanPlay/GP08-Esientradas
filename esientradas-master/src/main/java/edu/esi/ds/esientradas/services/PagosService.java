@@ -156,6 +156,10 @@ public class PagosService {
         entrada.setPago(pago);
         pago.setEstado("COMPLETADO");
         pago.setCantidadCentimos(entrada.getPrecio());
+        // Nuevo: registrar usuario y fecha de compra para permitir devoluciones en 15 min
+        pago.setUsuarioEmail(userEmail);
+        pago.setFechaCompra(java.time.LocalDateTime.now());
+
         pagoDao.save(pago);
 
         Configuracion config = configuracionDao.findAll().stream().findFirst().orElse(null);
