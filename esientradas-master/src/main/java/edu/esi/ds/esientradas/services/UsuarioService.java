@@ -1,13 +1,19 @@
 package edu.esi.ds.esientradas.services;
 
-import org.springframework.stereotype.Service;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestClientException;
 
-// Servicio de usuario: consulta el microservicio esiusuarios para verificar tokens.
+// Servicio de usuario: consulta el microservicio esiusuarios para verificar tokens y gestionar el monedero.
 @Service
 public class UsuarioService {
 
@@ -15,7 +21,6 @@ public class UsuarioService {
     private final String esiusuariosBaseUrl;
 
     // RestTemplate es la herramienta de Spring para hacer peticiones HTTP a otros servidores
-    // Es como un "cliente HTTP" incorporado — similar a fetch() en JavaScript
     private final RestTemplate restTemplate = new RestTemplate();
 
     // @Value("${esiusuarios.url}") → lee el valor de application.properties
@@ -32,7 +37,6 @@ public class UsuarioService {
 
         try {
             // Construimos la URL: http://localhost:8081/checkToken?token=xxxxx
-            // UriComponentsBuilder es una herramienta para construir URLs de forma segura
             String url = UriComponentsBuilder.fromHttpUrl(esiusuariosBaseUrl)
                     .pathSegment("checkToken")     // añade /checkToken
                     .queryParam("token", token)    // añade ?token=xxxxx
@@ -49,14 +53,11 @@ public class UsuarioService {
             return null;
 
         } catch (org.springframework.web.client.HttpClientErrorException ex) {
-            // Si esiusuarios devuelve 400/401/403, el token no es válido o caducó
             System.err.println("Token no válido o expirado: " + ex.getMessage());
             return null;
         } catch (RestClientException ex) {
-            // Si esiusuarios está caído o devuelve 500, informamos en log
             System.err.println("Error de comunicación con esiusuarios: " + ex.getMessage());
             
-            // Si es un HttpServerErrorException, podemos sacar el cuerpo del error
             String detalles = "El servicio de usuarios no está disponible";
             if (ex instanceof org.springframework.web.client.HttpServerErrorException) {
                 detalles = ((org.springframework.web.client.HttpServerErrorException) ex).getResponseBodyAsString();
@@ -66,6 +67,54 @@ public class UsuarioService {
                 org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, 
                 detalles
             );
+        }
+    }
+
+    // ============================================================
+    // NUEVOS MÉTODOS DE COMUNICACIÓN CON EL MONEDERO
+    // ============================================================
+
+    // Envía una petición POST para sumarle dinero al monedero de un usuario tras una cancelación.
+    public boolean sumarSaldo(String email, double cantidad) {
+        try {
+            String url = esiusuariosBaseUrl + "/users/sumarSaldo";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("email", email);
+            payload.put("cantidad", cantidad);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            System.err.println("Error de comunicación al sumar saldo en esiusuarios: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // Envía una petición POST para descontar dinero del monedero cuando el usuario compra con su saldo.
+    public boolean restarSaldo(String email, double cantidad) {
+        try {
+            String url = esiusuariosBaseUrl + "/users/restarSaldo";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("email", email);
+            payload.put("cantidad", cantidad);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            System.err.println("Error de comunicación al restar saldo en esiusuarios: " + e.getMessage());
+            return false;
         }
     }
 }

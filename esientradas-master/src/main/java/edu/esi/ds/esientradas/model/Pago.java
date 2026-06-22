@@ -1,6 +1,7 @@
 package edu.esi.ds.esientradas.model;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,7 +14,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
-// Entidad Pago: representa una transacción de compra completa (el carrito).
 @Entity
 @Table(name = "pago")
 public class Pago {
@@ -22,7 +22,6 @@ public class Pago {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Un pago agrupa a una o más entradas
     @OneToMany(mappedBy = "pago", cascade = CascadeType.ALL)
     private List<Entrada> entradas = new ArrayList<>();
 
@@ -38,12 +37,15 @@ public class Pago {
     @Column(name = "id_intento_pago", length = 128)
     private String idIntentoPago;
 
-    // Añadimos el email del comprador directamente al pago
     @Column(name = "usuario_email")
     private String usuarioEmail;
 
     @Column(name = "creado_en", nullable = false)
     private Long creadoEn;
+
+    // Para los 15 minutos de cancelación
+    @Column(name = "fecha_compra")
+    private LocalDateTime fechaCompra;
 
     public Pago() {
         this.creadoEn = Instant.now().toEpochMilli();
@@ -82,4 +84,7 @@ public class Pago {
 
     public Long getCreadoEn() { return creadoEn; }
     public void setCreadoEn(Long creadoEn) { this.creadoEn = creadoEn; }
+
+    public LocalDateTime getFechaCompra() { return fechaCompra; }
+    public void setFechaCompra(LocalDateTime fechaCompra) { this.fechaCompra = fechaCompra; }
 }

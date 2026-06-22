@@ -178,14 +178,14 @@ public class PagosService {
         List<Entrada> entradasCompradas = new java.util.ArrayList<>();
         List<byte[]> pdfs = new java.util.ArrayList<>();
 
-        // 1. Recuperamos el carrito (Pago) PENDIENTE que creamos en iniciarPago
-        // Como todas las entradas de esta sesión están en el mismo pago, cogemos el de la primera
+        // 1. Recuperamos el carrito (Pago) PENDIENTE
         Entrada primeraEntrada = tokens.get(0).getEntrada();
         Pago pagoExistente = primeraEntrada.getPago();
 
         if (pagoExistente != null) {
-            // 2. ¡Actualizamos el existente en lugar de crear uno nuevo!
+            // Marcamos la hora exacta de la compra para que empiecen a contar los 15 minutos
             pagoExistente.setEstado("COMPLETADO");
+            pagoExistente.setFechaCompra(java.time.LocalDateTime.now());
             pagoDao.save(pagoExistente);
         }
 
@@ -196,6 +196,9 @@ public class PagosService {
             // Marcamos la entrada como vendida y le quitamos el token de reserva
             entrada.setEstado(Estado.VENDIDA);
             entrada.setToken(null);
+            
+            // Le generamos un código de cancelación único a esta entrada
+            entrada.setTokenCancelacion(java.util.UUID.randomUUID().toString());
             
             try {
                 // Generamos el PDF
@@ -210,7 +213,7 @@ public class PagosService {
             tokenDao.delete(token.getValor());
         }
 
-        // Enviamos el correo final
+        // Enviamos el correo final (que ahora incluirá el enlace de cancelación)
         if (!entradasCompradas.isEmpty()) {
             emailService.enviarConfirmacionCompraMultiple(entradasCompradas, userEmail, pdfs);
         }

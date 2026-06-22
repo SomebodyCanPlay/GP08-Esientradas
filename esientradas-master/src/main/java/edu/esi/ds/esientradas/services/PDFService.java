@@ -2,8 +2,12 @@ package edu.esi.ds.esientradas.services;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.format.DateTimeFormatter;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.itextpdf.kernel.colors.ColorConstants;
@@ -18,14 +22,19 @@ import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 
+import edu.esi.ds.esientradas.dao.PdfDao;
 import edu.esi.ds.esientradas.model.Configuracion;
 import edu.esi.ds.esientradas.model.DeZona;
 import edu.esi.ds.esientradas.model.Entrada;
 import edu.esi.ds.esientradas.model.Espectaculo;
+import edu.esi.ds.esientradas.model.PDFEntidad;
 import edu.esi.ds.esientradas.model.Precisa;
 
 @Service
 public class PDFService {
+
+    @Autowired
+    private PdfDao pdfDao;
 
     public byte[] generarPdf(Entrada entrada, Configuracion config) throws IOException {
         String empName = (config != null && config.getNombre() != null) ? config.getNombre() : "ESIentradas";
@@ -76,11 +85,9 @@ public class PDFService {
                 .setBackgroundColor(ColorConstants.DARK_GRAY)
                 .setPadding(5).setMarginBottom(10).setTextAlignment(TextAlignment.CENTER));
 
-        // Creamos una tabla con 2 columnas (30% para la etiqueta, 70% para el valor)
         Table table = new Table(UnitValue.createPercentArray(new float[]{30, 70})).useAllAvailableWidth();
         table.setMarginBottom(20).setPaddingLeft(20);
 
-        // Usamos un método auxiliar para añadir las filas limpiamente
         addDetailRow(table, "Ticket ID:", String.valueOf(entrada.getId()), true);
 
         if (entrada instanceof Precisa p) {
@@ -109,22 +116,46 @@ public class PDFService {
     }
 
     // Método auxiliar para construir las filas de la tabla sin bordes visibles
-    // Método auxiliar para construir las filas de la tabla sin bordes visibles
     private void addDetailRow(Table table, String label, String value, boolean highlightValue) {
         Cell labelCell = new Cell().add(new Paragraph(label).setFontColor(ColorConstants.DARK_GRAY))
                 .setBorder(Border.NO_BORDER).setPadding(4);
         
-        // --- CORRECCIÓN AQUÍ ---
         Paragraph valueParagraph = new Paragraph(value);
         if (highlightValue) {
-            valueParagraph.setBold(); // Solo llamamos a setBold() si es true, sin pasarle el boolean
+            valueParagraph.setBold(); 
         }
         
         Cell valueCell = new Cell().add(valueParagraph)
                 .setBorder(Border.NO_BORDER).setPadding(4);
-        // -----------------------
         
         table.addCell(labelCell);
         table.addCell(valueCell);
+    }
+
+    // ==========================================
+    // 5. GUARDAR FÍSICAMENTE Y REGISTRAR EN BBDD
+    // ==========================================
+    public void guardarPdfFisicoYRegistrar(Long entradaId, byte[] pdfBytes) {
+        try {
+            String nombreArchivo = "entrada_" + entradaId + ".pdf";
+            Path rutaCarpeta = Paths.get("recibos_pdf");
+            Path rutaCompleta = rutaCarpeta.resolve(nombreArchivo);
+
+            if (!Files.exists(rutaCarpeta)) {
+                Files.createDirectories(rutaCarpeta);
+            }
+
+            Files.write(rutaCompleta, pdfBytes);
+
+            PDFEntidad pdfEntidad = new PDFEntidad();
+            pdfEntidad.setEntradaId(entradaId);
+            pdfEntidad.setUrlPDF(rutaCompleta.toString()); 
+
+            pdfDao.save(pdfEntidad);
+            System.out.println("PDF guardado y registrado en BD con éxito para entrada: " + entradaId);
+
+        } catch (IOException e) {
+            System.err.println("Error al guardar el PDF físico: " + e.getMessage());
+        }
     }
 }

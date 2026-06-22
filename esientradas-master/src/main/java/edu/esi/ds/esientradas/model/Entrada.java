@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -43,10 +44,13 @@ public abstract class Entrada {
     @OneToOne(mappedBy = "entrada", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     protected Token token;
 
-    // --- NUEVO: Relación con el pago al que pertenece esta entrada ---
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pago_id")
     protected Pago pago;
+
+    // El código  para cancelar entrada concreta
+    @Column(name = "token_cancelacion", unique = true)
+    protected String tokenCancelacion;
 
     // ============================================================
     // GETTERS Y SETTERS
@@ -69,8 +73,10 @@ public abstract class Entrada {
     public Token getToken() { return token; }
     public void setToken(Token token) { this.token = token; }
 
-    // Getter y Setter del pago
     @JsonIgnore
     public Pago getPago() { return pago; }
     public void setPago(Pago pago) { this.pago = pago; }
+
+    public String getTokenCancelacion() { return tokenCancelacion; }
+    public void setTokenCancelacion(String tokenCancelacion) { this.tokenCancelacion = tokenCancelacion; }
 }

@@ -1,10 +1,13 @@
 package edu.esi.ds.esientradas.dao;
 
 import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
 import edu.esi.ds.esientradas.model.Entrada;
 import edu.esi.ds.esientradas.model.Estado;
 
@@ -13,7 +16,7 @@ public interface EntradaDao extends JpaRepository<Entrada, Long> {
 
     // Todas las entradas de un espectáculo.
     List<Entrada> findByEspectaculoId(Long espectaculoId);
-
+    
     // Entradas por estado.
     List<Entrada> findByEstado(Estado estado);
 
@@ -37,4 +40,8 @@ public interface EntradaDao extends JpaRepository<Entrada, Long> {
             FROM Entrada e
             WHERE e.espectaculo.id = :espectaculoId""")
     Object getNumeroEntradasComoDto(@Param("espectaculoId") Long espectaculoId);
+
+    // PARA CANCELACIONES 
+    Optional<Entrada> findByTokenCancelacion(String tokenCancelacion);
+    
 }
